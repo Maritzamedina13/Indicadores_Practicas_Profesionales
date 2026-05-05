@@ -1023,10 +1023,6 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Modalidad de práctica</h3></div>
       <div class="card-body"><div class="ch h200"><canvas id="c-p-modalidad"></canvas></div></div>
     </div>
-    <div class="card full">
-      <div class="card-head"><h3>Top 15 programas con más practicantes</h3></div>
-      <div class="card-body"><div id="prog-list-pract" class="progress-list"></div></div>
-    </div>
     <div class="card">
       <div class="card-head"><h3>Distribución por facultad</h3></div>
       <div class="card-body"><div class="ch h260"><canvas id="c-p-facultad"></canvas></div></div>
@@ -1034,6 +1030,10 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card">
       <div class="card-head"><h3>Evolución semestral</h3></div>
       <div class="card-body"><div class="ch h260"><canvas id="c-p-semestre"></canvas></div></div>
+    </div>
+    <div class="card full">
+      <div class="card-head"><h3>Top 15 programas con más practicantes</h3></div>
+      <div class="card-body"><div id="prog-list-pract" class="progress-list"></div></div>
     </div>
     <div class="card full">
       <div class="card-head"><h3>Estudiantes por asesor (Todos)</h3></div>
@@ -1211,13 +1211,15 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Solicitudes de aprobación por programa</h3></div>
       <div class="card-body"><div class="ch h360"><canvas id="c-a-programa"></canvas></div></div>
     </div>
-    <div class="card">
-      <div class="card-head"><h3>Estado de aprobación</h3></div>
-      <div class="card-body"><div class="ch h240"><canvas id="c-a-estado"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Top 15 empresas solicitantes</h3></div>
-      <div class="card-body"><div class="ch h300"><canvas id="c-a-empresa"></canvas></div></div>
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 2fr;gap:18px">
+      <div class="card">
+        <div class="card-head"><h3>Estado de aprobación</h3></div>
+        <div class="card-body"><div class="ch h360"><canvas id="c-a-estado"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Top 15 empresas solicitantes</h3></div>
+        <div class="card-body"><div class="ch h360"><canvas id="c-a-empresa"></canvas></div></div>
+      </div>
     </div>
     <div class="card full">
       <div class="card-head"><h3>Empresa por programa — Top 20 combinaciones más frecuentes</h3></div>
@@ -1296,21 +1298,23 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Distribución por sector económico</h3></div>
       <div class="card-body"><div class="ch h300"><canvas id="c-enc-sector"></canvas></div></div>
     </div>
-    <div class="card">
-      <div class="card-head"><h3>Fortalezas del practicante ITM</h3></div>
-      <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-prac"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Debilidades del practicante ITM</h3></div>
-      <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-prac"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Fortalezas del egresado ITM</h3></div>
-      <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-eg"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>Debilidades del egresado ITM</h3></div>
-      <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-eg"></canvas></div></div>
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div class="card">
+        <div class="card-head"><h3>Fortalezas del practicante ITM</h3></div>
+        <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-prac"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Debilidades del practicante ITM</h3></div>
+        <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-prac"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Fortalezas del egresado ITM</h3></div>
+        <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-eg"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Debilidades del egresado ITM</h3></div>
+        <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-eg"></canvas></div></div>
+      </div>
     </div>
     <div class="card full">
       <div class="card-head"><h3>Competencias más demandadas por el mercado</h3></div>
@@ -1351,28 +1355,24 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body"><div class="ch h420"><canvas id="c-est-calif"></canvas></div></div>
     </div>
 
-    <!-- Satisfacción general -->
-    <div class="card">
-      <div class="card-head"><h3>Satisfacción general del servicio</h3></div>
-      <div class="card-body"><div class="ch h240"><canvas id="c-est-satisf"></canvas></div></div>
-    </div>
-
-    <!-- Recomendaría -->
-    <div class="card">
-      <div class="card-head"><h3>¿Recomendaría realizar la práctica?</h3></div>
-      <div class="card-body"><div class="ch h240"><canvas id="c-est-rec"></canvas></div></div>
-    </div>
-
-    <!-- Modalidad -->
-    <div class="card">
-      <div class="card-head"><h3>Modalidad de práctica</h3></div>
-      <div class="card-body"><div class="ch h240"><canvas id="c-est-modal"></canvas></div></div>
-    </div>
-
-    <!-- Proyecto a futuro -->
-    <div class="card">
-      <div class="card-head"><h3>Proyecto a futuro del estudiante</h3></div>
-      <div class="card-body"><div class="ch h240"><canvas id="c-est-futuro"></canvas></div></div>
+    <!-- Satisfacción general + Recomendaría + Modalidad + Proyecto a futuro -->
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px">
+      <div class="card">
+        <div class="card-head"><h3>Satisfacción general del servicio</h3></div>
+        <div class="card-body"><div class="ch h240"><canvas id="c-est-satisf"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>¿Recomendaría realizar la práctica?</h3></div>
+        <div class="card-body"><div class="ch h240"><canvas id="c-est-rec"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Modalidad de práctica</h3></div>
+        <div class="card-body"><div class="ch h240"><canvas id="c-est-modal"></canvas></div></div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <div class="card-head"><h3>Proyecto a futuro del estudiante</h3></div>
+        <div class="card-body"><div class="ch h200"><canvas id="c-est-futuro"></canvas></div></div>
+      </div>
     </div>
 
     <!-- Score por programa -->
