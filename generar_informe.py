@@ -101,6 +101,81 @@ def load_solicitud():
     df['SEMESTRE']  = df['HORA_INICIO'].apply(sem_label)
     return df
 
+def load_encuesta_est():
+    fname = 'Copia de Encuesta satisfacción del estudiante con su práctica profesional (1-1934).xlsx'
+    df = pd.read_excel(fname, engine='openpyxl')
+    df.columns = [c.strip() for c in df.columns]
+    cols = list(df.columns)
+    rename = {
+        cols[0]:'ID',     cols[1]:'FECHA',      cols[2]:'EMAIL',
+        cols[3]:'PROGRAMA', cols[4]:'EMPRESA',   cols[5]:'NIT_RAW',
+        cols[6]:'MODALIDAD', cols[7]:'PROYECTO_FUTURO',
+        cols[8]:'CALIF_FORMACION',    cols[9]:'CALIF_ORIENTACION',
+        cols[10]:'CALIF_PERTINENCIA', cols[11]:'CALIF_TUTOR',
+        cols[12]:'CALIF_DESEMPENO',   cols[13]:'CALIF_PUESTO',
+        cols[14]:'CALIF_ASESOR_ITM',  cols[15]:'ASESOR_NOMBRE',
+        cols[16]:'CALIF_SEGUIMIENTO', cols[17]:'CALIF_INFORMACION',
+        cols[18]:'RECOMIENDA',        cols[19]:'SATISFACCION_GENERAL',
+    }
+    df.rename(columns=rename, inplace=True)
+    df.drop(columns=['ID','EMAIL','NIT_RAW'], inplace=True)
+    calif_cols = ['CALIF_FORMACION','CALIF_ORIENTACION','CALIF_PERTINENCIA',
+                  'CALIF_TUTOR','CALIF_DESEMPENO','CALIF_PUESTO',
+                  'CALIF_ASESOR_ITM','CALIF_SEGUIMIENTO','CALIF_INFORMACION',
+                  'SATISFACCION_GENERAL']
+    for c in calif_cols:
+        df[c] = df[c].apply(clean_text).str.strip().str.capitalize()
+    for c in ['PROGRAMA','EMPRESA','MODALIDAD','PROYECTO_FUTURO','ASESOR_NOMBRE']:
+        df[c] = df[c].apply(clean_text)
+    df['PROGRAMA'] = df['PROGRAMA'].str.upper().apply(clean_text)
+    df['ASESOR_NOMBRE'] = df['ASESOR_NOMBRE'].str.strip()
+    df['RECOMIENDA'] = df['RECOMIENDA'].apply(clean_text).str.upper().str.strip()
+    df['FECHA'] = pd.to_datetime(df['FECHA'], errors='coerce')
+    df['ANIO']     = df['FECHA'].dt.year.fillna(0).astype(int)
+    df['MES']      = df['FECHA'].dt.month.fillna(0).astype(int)
+    df['MES_LABEL']= df['MES'].map(lambda x: MESES_ES.get(x,'Sin mes'))
+    df['SEMESTRE'] = df['FECHA'].apply(sem_label)
+    # Score numérico para promedios
+    score_map = {'Excelente':3,'Bueno':2,'Deficiente':1}
+    df['SCORE_GLOBAL'] = df[calif_cols].map(lambda v: score_map.get(v,0)).replace(0,pd.NA).mean(axis=1)
+    return df
+
+def load_encuesta():
+    df = pd.read_csv('EncuestaSatisfaccionEmpresarios.csv', encoding='latin-1', sep=';', on_bad_lines='skip')
+    df.columns = [c.strip() for c in df.columns]
+    cols = list(df.columns)
+    # Renombrar columnas con tildes/ñ por posición para evitar problemas de encoding
+    rename = {
+        cols[10]: 'IMPACTO_SOCIAL',
+        cols[11]: 'CALIF_FORMACION_EG',
+        cols[12]: 'CALIF_DESEMPENO_EG',
+        cols[13]: 'DEBILIDADES_EG',
+        cols[14]: 'FORTALEZAS_EG',
+        cols[15]: 'CALIF_FORMACION_PRAC',
+        cols[16]: 'CALIF_DESEMPENO_PRAC',
+        cols[17]: 'FORTALEZAS_PRAC',
+        cols[18]: 'DEBILIDADES_PRAC',
+        cols[19]: 'COMPETENCIAS',
+        cols[20]: 'TENDENCIAS',
+    }
+    df.rename(columns=rename, inplace=True)
+    for c in ['empresa','sector','mercado','tipo','programa','personal',
+              'IMPACTO_SOCIAL','CALIF_FORMACION_EG','CALIF_DESEMPENO_EG',
+              'DEBILIDADES_EG','FORTALEZAS_EG','CALIF_FORMACION_PRAC',
+              'CALIF_DESEMPENO_PRAC','FORTALEZAS_PRAC','DEBILIDADES_PRAC',
+              'COMPETENCIAS','vinculacionpracticantes']:
+        if c in df.columns:
+            df[c] = df[c].apply(clean_text)
+    df['tipo'] = df['tipo'].str.strip().str.upper()
+    df['programa'] = df['programa'].str.upper().apply(clean_text)
+    df['vinculacionpracticantes'] = df['vinculacionpracticantes'].str.upper().str.strip()
+    df['fechadiligenciamiento2'] = pd.to_datetime(df['fechadiligenciamiento2'], dayfirst=True, errors='coerce')
+    df['ANIO']      = df['fechadiligenciamiento2'].dt.year.fillna(0).astype(int)
+    df['MES']       = df['fechadiligenciamiento2'].dt.month.fillna(0).astype(int)
+    df['MES_LABEL'] = df['MES'].map(lambda x: MESES_ES.get(x, 'Sin mes'))
+    df['SEMESTRE']  = df['fechadiligenciamiento2'].apply(sem_label)
+    return df
+
 def load_aprobacion():
     df = pd.read_excel('aprobación de funciones.xlsx', sheet_name=0, engine='openpyxl')
     df.columns = [c.strip() for c in df.columns]
@@ -211,7 +286,7 @@ def raw_records(df, cols):
 
 # ─── Build master data dict ────────────────────────────────────────────────────
 
-def build_data(df1, df2, df3, df4, df5):
+def build_data(df1, df2, df3, df4, df5, df6, df7):
     data = {}
 
     # Facultad→Programas mapping (union de todas las BDs)
@@ -279,15 +354,15 @@ def build_data(df1, df2, df3, df4, df5):
         mask  = df3['PROGRAMA'].apply(clean_text) == p
         texts = (df3[mask]['ACTIVIDADES'].dropna().tolist() +
                  df3[mask]['DESCRIPCION'].dropna().tolist())
-        areas_por_prog[p] = areas_extract(texts, top=10)
+        areas_por_prog[p] = areas_extract(texts, top=20)
 
-    # Top-10 áreas por FACULTAD
+    # Top-20 áreas por FACULTAD
     areas_por_fac = {}
     for f in all_facs_f082:
         mask  = df3['FACULTAD'].apply(clean_text) == f
         texts = (df3[mask]['ACTIVIDADES'].dropna().tolist() +
                  df3[mask]['DESCRIPCION'].dropna().tolist())
-        areas_por_fac[f] = areas_extract(texts, top=10)
+        areas_por_fac[f] = areas_extract(texts, top=20)
 
     data['f_areas_prog']      = areas_por_prog
     data['f_areas_fac']       = areas_por_fac
@@ -305,8 +380,103 @@ def build_data(df1, df2, df3, df4, df5):
         f_wc_all[p] = [{'word': w, 'count': c} for w, c in kws]
     data['f_actividades_programa'] = f_wc_all
 
-    data['a_funciones_programa']   = activities_by_program(df5, prog_col='PROGRAMA', act_col='FUNCIONES', top_progs=8)
-    data['a_funciones_kw']         = [{'word':w,'count':c} for w,c in kw_extract(df5['FUNCIONES'].tolist())]
+    # Todos los programas con funciones (sin límite de top 8)
+    all_progs_aprob = sorted(df5['PROGRAMA'].dropna().apply(clean_text).unique().tolist())
+    a_func_prog = {}
+    for p in all_progs_aprob:
+        if not p: continue
+        texts = df5[df5['PROGRAMA'].apply(clean_text)==p]['FUNCIONES'].dropna().tolist()
+        kws = kw_extract(texts, n=20)
+        a_func_prog[p] = [{'word':w,'count':c} for w,c in kws]
+    data['a_funciones_programa'] = a_func_prog
+
+    # Palabras clave por facultad (usando fac_prog del mapa global)
+    a_func_fac = {}
+    for fac, progs in fac_prog.items():
+        if fac == 'SIN FACULTAD': continue
+        progs_clean = [clean_text(p) for p in progs]
+        mask = df5['PROGRAMA'].apply(clean_text).isin(progs_clean)
+        texts = df5[mask]['FUNCIONES'].dropna().tolist()
+        if texts:
+            kws = kw_extract(texts, n=20)
+            a_func_fac[fac] = [{'word':w,'count':c} for w,c in kws]
+    data['a_funciones_fac']      = a_func_fac
+
+    data['a_funciones_kw']       = [{'word':w,'count':c} for w,c in kw_extract(df5['FUNCIONES'].tolist(), n=20)]
+
+    # ── Encuesta Satisfacción Empresarios ─────────────────────────────────────
+    def _count_multi(series, top=12):
+        c = Counter()
+        for v in series.dropna():
+            for p in str(v).split(';'):
+                p = p.strip()
+                if p and p.lower() not in ('nan', 'none', ''):
+                    c[p] += 1
+        return [{'label': k, 'count': v} for k, v in c.most_common(top)]
+
+    def _count_calif(series):
+        order = ['EXCELENTE', 'BUENO', 'REGULAR', 'DEFICIENTE']
+        s = series.dropna().str.upper().str.strip()
+        return {o: int((s == o).sum()) for o in order if int((s == o).sum()) > 0}
+
+    data['enc_raw'] = raw_records(df6,
+        ['empresa', 'sector', 'mercado', 'tipo', 'programa',
+         'IMPACTO_SOCIAL', 'CALIF_FORMACION_EG', 'CALIF_DESEMPENO_EG',
+         'CALIF_FORMACION_PRAC', 'CALIF_DESEMPENO_PRAC',
+         'FORTALEZAS_PRAC', 'DEBILIDADES_PRAC',
+         'FORTALEZAS_EG', 'DEBILIDADES_EG',
+         'COMPETENCIAS', 'vinculacionpracticantes',
+         'ANIO', 'MES', 'MES_LABEL', 'SEMESTRE'])
+
+    data['enc_calif_impacto']       = _count_calif(df6['IMPACTO_SOCIAL'])
+    data['enc_calif_formacion_eg']  = _count_calif(df6['CALIF_FORMACION_EG'])
+    data['enc_calif_desempeno_eg']  = _count_calif(df6['CALIF_DESEMPENO_EG'])
+    data['enc_calif_formacion_prac']= _count_calif(df6['CALIF_FORMACION_PRAC'])
+    data['enc_calif_desempeno_prac']= _count_calif(df6['CALIF_DESEMPENO_PRAC'])
+
+    data['enc_fortalezas_prac']  = _count_multi(df6['FORTALEZAS_PRAC'])
+    data['enc_debilidades_prac'] = _count_multi(df6['DEBILIDADES_PRAC'])
+    data['enc_fortalezas_eg']    = _count_multi(df6['FORTALEZAS_EG'])
+    data['enc_debilidades_eg']   = _count_multi(df6['DEBILIDADES_EG'])
+    data['enc_competencias']     = _count_multi(df6['COMPETENCIAS'])
+
+    # ── Encuesta Satisfacción Estudiantes ─────────────────────────────────────
+    EST_CALIF = ['CALIF_FORMACION','CALIF_ORIENTACION','CALIF_PERTINENCIA',
+                 'CALIF_TUTOR','CALIF_DESEMPENO','CALIF_PUESTO',
+                 'CALIF_ASESOR_ITM','CALIF_SEGUIMIENTO','CALIF_INFORMACION',
+                 'SATISFACCION_GENERAL']
+    EST_SCORE_MAP = {'Excelente':3,'Bueno':2,'Deficiente':1}
+
+    data['est_raw'] = raw_records(df7,
+        ['PROGRAMA','EMPRESA','MODALIDAD','PROYECTO_FUTURO','ASESOR_NOMBRE',
+         'RECOMIENDA','SATISFACCION_GENERAL'] + EST_CALIF +
+        ['ANIO','MES','MES_LABEL','SEMESTRE'])
+
+    # Score promedio por programa
+    prog_scores = {}
+    for p in df7['PROGRAMA'].dropna().unique():
+        p = clean_text(str(p))
+        if not p: continue
+        mask = df7['PROGRAMA'].apply(clean_text) == p
+        vals = df7[mask][EST_CALIF].map(lambda v: EST_SCORE_MAP.get(str(v).strip().capitalize(),0))
+        vals = vals.replace(0, pd.NA)
+        avg = float(vals.stack().mean()) if not vals.stack().empty else 0
+        n = int(mask.sum())
+        prog_scores[p] = {'score': round(avg,2), 'n': n}
+    data['est_prog_scores'] = dict(sorted(prog_scores.items(), key=lambda x:-x[1]['score']))
+
+    # Score promedio por asesor
+    asesor_scores = {}
+    for a in df7['ASESOR_NOMBRE'].dropna().unique():
+        a = clean_text(str(a))
+        if not a or len(a) < 4: continue
+        mask = df7['ASESOR_NOMBRE'].apply(clean_text) == a
+        vals = df7[mask][EST_CALIF].map(lambda v: EST_SCORE_MAP.get(str(v).strip().capitalize(),0))
+        vals = vals.replace(0, pd.NA)
+        avg = float(vals.stack().mean()) if not vals.stack().empty else 0
+        n = int(mask.sum())
+        asesor_scores[a] = {'score': round(avg,2), 'n': n}
+    data['est_asesor_scores'] = dict(sorted(asesor_scores.items(), key=lambda x:-x[1]['score']))
 
     return data
 
@@ -605,6 +775,7 @@ main { padding: 24px 28px; max-width:1600px; margin:0 auto }
 .ch.h240 { height:240px }
 .ch.h300 { height:300px }
 .ch.h360 { height:360px }
+.ch.h420 { height:420px }
 
 /* ── TABLES ──────────────────────────────────── */
 .tbl-scroll { overflow-x:auto; max-height:320px; overflow-y:auto }
@@ -771,6 +942,12 @@ footer b { color:rgba(255,255,255,.8) }
     <button class="nav-btn" onclick="goTo('aprobacion',this)">
       <span class="dot"></span>✅ Aprobación Funciones
     </button>
+    <button class="nav-btn" onclick="goTo('encuesta',this)">
+      <span class="dot"></span>📊 Encuesta Empresarios
+    </button>
+    <button class="nav-btn" onclick="goTo('encuesta-est',this)">
+      <span class="dot"></span>🎓 Encuesta Estudiantes
+    </button>
   </nav>
 </header>
 
@@ -859,8 +1036,12 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body"><div class="ch h260"><canvas id="c-p-semestre"></canvas></div></div>
     </div>
     <div class="card full">
-      <div class="card-head"><h3>Estudiantes por asesor (Top 20)</h3></div>
-      <div class="card-body"><div class="ch h340"><canvas id="c-p-asesor"></canvas></div></div>
+      <div class="card-head"><h3>Estudiantes por asesor (Todos)</h3></div>
+      <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
+        <div class="ch h360" id="wrap-p-asesor" style="min-width:700px">
+          <canvas id="c-p-asesor"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -938,10 +1119,6 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Estado de entrega</h3></div>
       <div class="card-body"><div class="ch h200"><canvas id="c-f-entregado"></canvas></div></div>
     </div>
-    <div class="card">
-      <div class="card-head"><h3>Empresa óptima para practicantes</h3></div>
-      <div class="card-body"><div class="ch h200"><canvas id="c-f-optima"></canvas></div></div>
-    </div>
     <div class="card full">
       <div class="card-head"><h3>Histórico de entregas por semestre</h3></div>
       <div class="card-body"><div class="ch h280"><canvas id="c-f-historico"></canvas></div></div>
@@ -953,18 +1130,30 @@ footer b { color:rgba(255,255,255,.8) }
   </div>
   <div class="card full" style="margin-bottom:18px">
     <div class="card-head">
-      <h3>Funciones más demandadas por programa — actividades y descripción</h3>
-      <span class="card-badge">Nube de palabras</span>
+      <h3>Competencias y áreas más demandadas por el mercado</h3>
+      <span class="card-badge">Actividades · Descripción · Por programa / facultad</span>
     </div>
     <div class="card-body">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <label style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">Programa:</label>
-        <select id="sel-prog-f082" class="filter-select" style="max-width:380px;flex:1"
-          onchange="onF082ProgChange()">
-        </select>
-        <span id="f082-wc-count" style="font-size:.75rem;color:var(--text3)"></span>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap">
+        <div class="filter-group">
+          <span class="filter-label">Facultad</span>
+          <select id="sel-fac-f082" class="filter-select" style="max-width:320px"
+            onchange="onF082FacChange()">
+            <option value="">Todas las facultades</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Programa</span>
+          <select id="sel-prog-f082" class="filter-select" style="max-width:380px"
+            onchange="onF082ProgChange()">
+            <option value="">Todos los programas</option>
+          </select>
+        </div>
+        <span id="f082-wc-count" style="font-size:.78rem;color:var(--text2);font-weight:600"></span>
       </div>
-      <canvas id="wc-canvas-f082" style="width:100%;border-radius:10px;background:var(--surface2)"></canvas>
+      <div id="wrap-areas-f082" class="ch h420">
+        <canvas id="c-areas-f082"></canvas>
+      </div>
     </div>
   </div>
 </section>
@@ -1037,18 +1226,199 @@ footer b { color:rgba(255,255,255,.8) }
       </div>
     </div>
   </div>
-  <div class="card" style="margin-bottom:18px">
-    <div class="card-head"><h3>Tipo de función solicitada por programa — palabras clave</h3></div>
+  <div class="card full" style="margin-bottom:18px">
+    <div class="card-head">
+      <h3>Tipo de función solicitada — por programa / facultad</h3>
+      <span class="card-badge">Top palabras clave en FUNCIONES</span>
+    </div>
     <div class="card-body">
-      <div class="prog-pills" id="pills-aprob"></div>
-      <div class="word-cloud" id="wc-aprob"></div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap">
+        <div class="filter-group">
+          <span class="filter-label">Facultad</span>
+          <select id="sel-fac-aprob" class="filter-select" style="max-width:320px"
+            onchange="onAprobFacChange()">
+            <option value="">Todas las facultades</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Programa</span>
+          <select id="sel-prog-aprob" class="filter-select" style="max-width:380px"
+            onchange="onAprobProgChange()">
+            <option value="">Todos los programas</option>
+          </select>
+        </div>
+        <span id="aprob-kw-count" style="font-size:.78rem;color:var(--text2);font-weight:600"></span>
+      </div>
+      <div id="wrap-aprob-func" class="ch h420">
+        <canvas id="c-aprob-func"></canvas>
+      </div>
     </div>
   </div>
-  <div class="card" style="margin-bottom:18px">
-    <div class="card-head"><h3>Demanda global del mercado — funciones más requeridas</h3></div>
-    <div class="card-body">
-      <div class="word-cloud" id="wc-global"></div>
+  <div class="card full" style="margin-bottom:18px">
+    <div class="card-head">
+      <h3>Demanda global del mercado — funciones más requeridas</h3>
+      <span class="card-badge">Consolidado de todas las empresas</span>
     </div>
+    <div class="card-body"><div class="ch h420"><canvas id="c-aprob-global"></canvas></div></div>
+  </div>
+</section>
+
+<!-- ────────────── ENCUESTA SATISFACCIÓN EMPRESARIOS ────────────── -->
+<section id="sec-encuesta" class="section">
+  <div class="sec-hero">
+    <div class="sec-hero-left">
+      <div class="sec-hero-icon">📊</div>
+      <h2>Encuesta de Satisfacción – Empresarios</h2>
+      <p>Calidad de formación, desempeño laboral, fortalezas y competencias desde la perspectiva empresarial</p>
+    </div>
+    <div class="sec-hero-right" id="hero-enc"></div>
+  </div>
+  <div class="kpi-row" id="kpi-enc"></div>
+  <div class="stat-panel" id="stat-enc"></div>
+  <div class="charts-grid">
+    <div class="card full">
+      <div class="card-head"><h3>Calificaciones por criterio de evaluación (% Excelente · Bueno · Deficiente)</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-calif"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>¿La empresa vincularía practicantes?</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-enc-vinculacion"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Tipo de empresa</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-enc-tipo"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Cobertura de mercado</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-enc-mercado"></canvas></div></div>
+    </div>
+    <div class="card full">
+      <div class="card-head"><h3>Distribución por sector económico</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-sector"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Fortalezas del practicante ITM</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-prac"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Debilidades del practicante ITM</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-prac"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Fortalezas del egresado ITM</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-eg"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Debilidades del egresado ITM</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-deb-eg"></canvas></div></div>
+    </div>
+    <div class="card full">
+      <div class="card-head"><h3>Competencias más demandadas por el mercado</h3></div>
+      <div class="card-body"><div class="ch h300"><canvas id="c-enc-competencias"></canvas></div></div>
+    </div>
+    <div class="card full">
+      <div class="card-head"><h3>Programas con mayor participación en la encuesta</h3></div>
+      <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
+        <div class="ch h300" id="wrap-enc-prog" style="min-width:700px">
+          <canvas id="c-enc-programas"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="card full">
+      <div class="card-head"><h3>Evolución de respuestas por año</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-enc-anio"></canvas></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────── ENCUESTA SATISFACCIÓN ESTUDIANTES ────────────── -->
+<section id="sec-encuesta-est" class="section">
+  <div class="sec-hero">
+    <div class="sec-hero-left">
+      <div class="sec-hero-icon">🎓</div>
+      <h2>Encuesta de Satisfacción – Estudiantes</h2>
+      <p>Experiencia en empresa, gestión de la Oficina de Prácticas, proyecto de vida y recomendación</p>
+    </div>
+    <div class="sec-hero-right" id="hero-est"></div>
+  </div>
+  <div class="kpi-row" id="kpi-est"></div>
+  <div class="stat-panel" id="stat-est"></div>
+  <div class="charts-grid">
+
+    <!-- Calificaciones comparadas (stacked) -->
+    <div class="card full">
+      <div class="card-head"><h3>Calificaciones por criterio — vista comparativa</h3><span class="card-badge">% Excelente · Bueno · Deficiente</span></div>
+      <div class="card-body"><div class="ch h420"><canvas id="c-est-calif"></canvas></div></div>
+    </div>
+
+    <!-- Satisfacción general -->
+    <div class="card">
+      <div class="card-head"><h3>Satisfacción general del servicio</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-est-satisf"></canvas></div></div>
+    </div>
+
+    <!-- Recomendaría -->
+    <div class="card">
+      <div class="card-head"><h3>¿Recomendaría realizar la práctica?</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-est-rec"></canvas></div></div>
+    </div>
+
+    <!-- Modalidad -->
+    <div class="card">
+      <div class="card-head"><h3>Modalidad de práctica</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-est-modal"></canvas></div></div>
+    </div>
+
+    <!-- Proyecto a futuro -->
+    <div class="card">
+      <div class="card-head"><h3>Proyecto a futuro del estudiante</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-est-futuro"></canvas></div></div>
+    </div>
+
+    <!-- Score por programa -->
+    <div class="card full">
+      <div class="card-head">
+        <h3>Índice de satisfacción promedio por programa</h3>
+        <span class="card-badge">Escala 1 – 3 · Verde ≥ 2.7 · Teal ≥ 2.3 · Dorado ≥ 1.8</span>
+      </div>
+      <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
+        <div class="ch h360" id="wrap-est-prog-score" style="min-width:700px">
+          <canvas id="c-est-prog-score"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Programas participantes -->
+    <div class="card full">
+      <div class="card-head"><h3>Programas con mayor participación</h3></div>
+      <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
+        <div class="ch h300" id="wrap-est-prog" style="min-width:700px">
+          <canvas id="c-est-prog"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top empresas -->
+    <div class="card full">
+      <div class="card-head"><h3>Top 15 empresas donde se realizó la práctica</h3></div>
+      <div class="card-body"><div class="ch h360"><canvas id="c-est-empresa"></canvas></div></div>
+    </div>
+
+    <!-- Score por asesor -->
+    <div class="card full">
+      <div class="card-head">
+        <h3>Índice de satisfacción por asesor ITM</h3>
+        <span class="card-badge">Escala 1 – 3 · basado en todas las calificaciones</span>
+      </div>
+      <div class="card-body"><div class="ch h360"><canvas id="c-est-asesor-score"></canvas></div></div>
+    </div>
+
+    <!-- Evolución semestral -->
+    <div class="card full">
+      <div class="card-head"><h3>Evolución de respuestas por semestre</h3></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-est-semestre"></canvas></div></div>
+    </div>
+
   </div>
 </section>
 
@@ -1067,13 +1437,30 @@ const D = __DATA_JSON__;
 const C = {
   blue:   '#00539B', blue2: '#003d73', blue3: '#1a6eb5',
   gold:   '#E8A000', gold2: '#b87e00', gold3: '#ffd060',
-  green:  '#10b981', red:   '#ef4444', purple: '#8b5cf6',
+  green:  '#10b981', red:   '#9C095D', purple: '#8b5cf6',
   teal:   '#0891b2', orange:'#ea580c'
 };
-const PAL_MAIN = [C.blue,C.gold,C.blue3,C.green,C.purple,C.teal,C.orange,C.red,
-                  '#4a7fb0','#d4940a','#3485cc','#059669','#7c3aed','#0e7490','#c2410c'];
+const PAL_MAIN = [C.blue,C.gold,C.blue3,C.green,C.purple,C.teal,C.orange,'#661081',
+                  '#4a7fb0','#d4940a','#3485cc','#009030','#7c3aed','#0e7490','#F19800'];
 const PAL_BLUE = ['#003d73','#00539B','#1a6eb5','#3485cc','#4f9de0','#6bb3f0','#88c8fa'];
 const PAL_GOLD = [C.gold2, C.gold, C.gold3, '#ffe08a', '#b87e00'];
+
+// ── Colores por facultad (paleta institucional ITM) ──────────────────────────
+const FAC_COLORS = {
+  artes:     ['#661081','#910581','#9C095D'],
+  ingenieria:['#102D69','#00A0B7','#56ACDE'],
+  exactas:   ['#009030','#98BF13','#D1DD72'],
+  economicas:['#F19800','#F6B63E','#F9C873'],
+};
+function facColor(name, shade=0) {
+  const n=(name||'').toUpperCase();
+  if(n.includes('ARTES')||n.includes('HUMANIDAD')) return FAC_COLORS.artes[shade%3];
+  if(n.includes('INGEN'))                          return FAC_COLORS.ingenieria[shade%3];
+  if(n.includes('EXACT')||n.includes('APLICAD'))  return FAC_COLORS.exactas[shade%3];
+  if(n.includes('ECONOM')||n.includes('ADMIN'))   return FAC_COLORS.economicas[shade%3];
+  return PAL_MAIN[shade % PAL_MAIN.length];
+}
+function facColorsArr(labels) { return labels.map((l,i) => facColor(l, i%3)); }
 
 function pal(n, arr){ return Array.from({length:n},(_,i)=>arr[i%arr.length]) }
 
@@ -1117,6 +1504,42 @@ function mkBar(id, labels, vals, {horiz=false, colors=null, maxVal=null}={}) {
             ticks:{font:{size:10},
               callback:function(v){ const l=this.getLabelForValue(v); return l&&l.length>30?l.slice(0,28)+'…':l }},
             ...(horiz ? { max: maxVal||(maxV*1.18) } : {}) }
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+function mkStacked(id, criterios, datasets) {
+  // datasets: [{label:'EXCELENTE', data:[...], bg:'...'}, ...]
+  const c = document.getElementById(id);
+  if(!c) return; if(c._ch) c._ch.destroy();
+  c._ch = new Chart(c, {
+    type:'bar',
+    data:{ labels:criterios, datasets: datasets.map(d=>({
+      label: d.label, data: d.data,
+      backgroundColor: d.bg, borderRadius:3, borderSkipped:false
+    }))},
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{right:10} },
+      scales:{
+        x:{ stacked:true, grid:{color:'#eef1f7'},
+            ticks:{font:{size:10}, callback: v => v+'%'} },
+        y:{ stacked:true, grid:{display:false},
+            ticks:{font:{size:10},
+              callback: function(v){ const l=this.getLabelForValue(v); return l&&l.length>32?l.slice(0,30)+'…':l; }
+            }
+          }
+      },
+      plugins:{
+        legend:{ position:'top', labels:{font:{size:11}, boxWidth:14} },
+        tooltip:{ callbacks:{ label: x => ` ${x.dataset.label}: ${x.parsed.x}%` } },
+        datalabels:{
+          display: ctx => ctx.dataset.data[ctx.dataIndex] >= 8,
+          color:'#fff', font:{size:10,weight:'bold'},
+          formatter: v => v+'%', anchor:'center', align:'center'
+        }
       }
     },
     plugins:[ChartDataLabels]
@@ -1265,7 +1688,11 @@ function filterRows(rows, {progKey='PROGRAMA', facKey='FACULTAD'}={}) {
 // ── Aggregation helpers ──────────────────────────────────────────────────────
 function groupBy(rows, key, n=0) {
   const m={};
-  rows.forEach(r=>{ const k=r[key]||'Sin dato'; m[k]=(m[k]||0)+1; });
+  rows.forEach(r=>{
+    const k=r[key];
+    if(!k || !String(k).trim() || String(k).trim()==='0') return;
+    m[k]=(m[k]||0)+1;
+  });
   let pairs = Object.entries(m).sort((a,b)=>b[1]-a[1]);
   if(n>0) pairs=pairs.slice(0,n);
   return { labels:pairs.map(p=>p[0]), values:pairs.map(p=>p[1]) };
@@ -1407,13 +1834,15 @@ function renderPracticantes() {
   progressList('prog-list-pract', rows, 'PROGRAMA', 15);
 
   const fac=groupBy(rows,'FACULTAD');
-  mkDoughnut('c-p-facultad', fac.labels, fac.values);
+  mkDoughnut('c-p-facultad', fac.labels, fac.values, facColorsArr(fac.labels));
 
   const sem=semSort(rows);
   mkLine('c-p-semestre', sem.labels, sem.values, C.blue);
 
-  const as=groupBy(rows,'ASESOR',20);
-  mkBar('c-p-asesor', as.labels, as.values, {horiz:true});
+  const as=groupBy(rows,'ASESOR');
+  const wrap=document.getElementById('wrap-p-asesor');
+  if(wrap) wrap.style.width=Math.max(700, as.labels.length*70)+'px';
+  mkBar('c-p-asesor', as.labels, as.values, {horiz:false});
 }
 
 function renderDisponibles() {
@@ -1449,7 +1878,7 @@ function renderDisponibles() {
   mkBar('c-d-programa', prog.labels, prog.values, {horiz:true});
 
   const fac=groupBy(rows,'FACULTAD');
-  mkDoughnut('c-d-facultad', fac.labels, fac.values);
+  mkDoughnut('c-d-facultad', fac.labels, fac.values, facColorsArr(fac.labels));
 
   const dis=groupBy(rows,'DISCAPACIDAD');
   mkDoughnut('c-d-disc', dis.labels, dis.values, [C.blue, C.gold]);
@@ -1502,16 +1931,14 @@ function renderF082() {
   mkBar('c-f-programa', prog.labels, prog.values, {horiz:true});
 
   const fac=groupBy(rows,'FACULTAD');
-  mkDoughnut('c-f-facultad', fac.labels, fac.values);
+  mkDoughnut('c-f-facultad', fac.labels, fac.values, facColorsArr(fac.labels));
 
   const vinv=groupBy(rows,'VINCULADO');
-  mkDoughnut('c-f-vinculado', vinv.labels, vinv.values, [C.green, C.red]);
+  mkDoughnut('c-f-vinculado', vinv.labels, vinv.values, [C.green, C.orange]);
 
   const entv=groupBy(rows,'ENTREGADO');
   mkDoughnut('c-f-entregado', entv.labels, entv.values, [C.blue, C.gold]);
 
-  const opt=groupBy(rows,'ES_OPTIMA');
-  mkDoughnut('c-f-optima', opt.labels, opt.values, [C.green, C.red]);
 
   const hist=semSort(rows);
   mkLine('c-f-historico', hist.labels, hist.values, C.blue);
@@ -1534,8 +1961,8 @@ function renderF082() {
     c._ch = new Chart(c, {
       type:'bar',
       data:{ labels:vaYears, datasets:[
-        { label:'Vinculado',    data:vaSi, backgroundColor:C.green, borderRadius:5, borderSkipped:false },
-        { label:'No vinculado', data:vaNo, backgroundColor:C.red,   borderRadius:5, borderSkipped:false }
+        { label:'Vinculado',    data:vaSi, backgroundColor:C.green,  borderRadius:5, borderSkipped:false },
+        { label:'No vinculado', data:vaNo, backgroundColor:C.orange, borderRadius:5, borderSkipped:false }
       ]},
       options:{
         responsive:true, maintainAspectRatio:false,
@@ -1561,31 +1988,80 @@ function renderF082() {
     });
   })();
 
-  // Poblar dropdown con todos los programas
-  const sel082 = document.getElementById('sel-prog-f082');
-  if(sel082 && sel082.options.length <= 1) {
-    D.f_programas_list.forEach(p => {
-      const o = document.createElement('option'); o.value = p; o.textContent = p; sel082.appendChild(o);
+  // Poblar dropdowns facultad y programa
+  const selFac082 = document.getElementById('sel-fac-f082');
+  const selProg082 = document.getElementById('sel-prog-f082');
+  if(selFac082 && selFac082.options.length <= 1) {
+    D.f_facultades_list.forEach(f => {
+      const o = document.createElement('option'); o.value = f; o.textContent = f; selFac082.appendChild(o);
     });
-    if(D.f_programas_list.length) sel082.value = D.f_programas_list[0];
   }
-  drawWordCloud('wc-canvas-f082', D.f_actividades_programa[sel082 ? sel082.value : D.f_programas_list[0]] || []);
-  updateF082Count();
+  if(selProg082 && selProg082.options.length <= 1) {
+    D.f_programas_list.forEach(p => {
+      const o = document.createElement('option'); o.value = p; o.textContent = p; selProg082.appendChild(o);
+    });
+    selProg082.value = '';
+  }
+  drawAreasF082();
+}
+
+function drawAreasF082() {
+  const fac  = (document.getElementById('sel-fac-f082')  || {}).value || '';
+  const prog = (document.getElementById('sel-prog-f082') || {}).value || '';
+
+  let areas = [];
+  let titulo = '';
+  if(prog && D.f_areas_prog[prog]) {
+    areas  = D.f_areas_prog[prog];
+    titulo = prog;
+  } else if(fac && D.f_areas_fac[fac]) {
+    areas  = D.f_areas_fac[fac];
+    titulo = fac;
+  } else {
+    // Sin selección: consolidar todas las áreas de todos los programas
+    const global = {};
+    Object.values(D.f_areas_prog).forEach(arr => {
+      arr.forEach(a => { global[a.area] = (global[a.area]||0) + a.count; });
+    });
+    areas = Object.entries(global).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([area,count])=>({area,count}));
+    titulo = 'Todos los programas';
+  }
+
+  const labels = areas.map(a => a.area);
+  const values = areas.map(a => a.count);
+
+  const wrap = document.getElementById('wrap-areas-f082');
+  if(wrap) wrap.style.height = Math.max(300, labels.length * 42 + 60) + 'px';
+
+  // Colores degradados por ranking: primeros más intensos
+  const baseColors = [C.blue,'#1a6eb5','#3485cc','#4f9de0',C.gold,C.teal,C.green,C.purple,C.orange,'#661081',
+                      '#6bb3f0','#d4940a','#009030','#7c3aed','#F19800'];
+  mkBar('c-areas-f082', labels, values, {horiz:true, colors:pal(labels.length, baseColors)});
+
+  const el = document.getElementById('f082-wc-count');
+  if(el) el.textContent = labels.length
+    ? `${labels.length} competencias identificadas${titulo ? ' · ' + titulo : ''}`
+    : 'Sin datos para la selección';
+}
+
+function onF082FacChange() {
+  const fac     = (document.getElementById('sel-fac-f082') || {}).value || '';
+  const selProg = document.getElementById('sel-prog-f082');
+  if(!selProg) { drawAreasF082(); return; }
+  selProg.innerHTML = '<option value="">Todos los programas</option>';
+  const progs = fac ? (D.f_fac_to_prog[fac] || []) : D.f_programas_list;
+  progs.forEach(p => {
+    const o = document.createElement('option'); o.value = p; o.textContent = p; selProg.appendChild(o);
+  });
+  if(progs.length) selProg.value = progs[0];
+  drawAreasF082();
 }
 
 function onF082ProgChange() {
-  const sel = document.getElementById('sel-prog-f082');
-  const words = D.f_actividades_programa[sel.value] || [];
-  drawWordCloud('wc-canvas-f082', words);
-  updateF082Count();
+  drawAreasF082();
 }
 
-function updateF082Count() {
-  const sel = document.getElementById('sel-prog-f082');
-  const words = D.f_actividades_programa[sel ? sel.value : ''] || [];
-  const el = document.getElementById('f082-wc-count');
-  if(el) el.textContent = words.length ? words.length + ' palabras clave extraídas' : '';
-}
+function updateF082Count() { /* reemplazado por drawAreasF082 */ }
 
 function renderSolicitud() {
   const rows = filterRows(D.raw_solicitud, {progKey:'PERFIL_SOLICITADO', facKey:null});
@@ -1675,8 +2151,384 @@ function renderAprobacion() {
   mkBar('c-a-empresa', emp.labels, emp.values, {horiz:true, colors:pal(emp.labels.length, PAL_GOLD)});
 
   renderTableEP(rows);
-  renderPills('pills-aprob','wc-aprob', D.a_funciones_programa);
-  renderWC('wc-global', D.a_funciones_kw);
+  initAprobFiltros();
+
+  // Demanda global — barra horizontal fija (siempre global)
+  const gkw = D.a_funciones_kw;
+  const gwrap = document.getElementById('c-aprob-global');
+  if(gwrap && gwrap.parentElement)
+    gwrap.parentElement.style.height = Math.max(300, gkw.length * 36 + 60) + 'px';
+  mkBar('c-aprob-global', gkw.map(w=>w.word), gkw.map(w=>w.count),
+    {horiz:true, colors:pal(gkw.length, PAL_BLUE)});
+}
+
+function initAprobFiltros() {
+  const selFac  = document.getElementById('sel-fac-aprob');
+  const selProg = document.getElementById('sel-prog-aprob');
+  if(selFac && selFac.options.length <= 1) {
+    D.all_facultades.forEach(f=>{
+      const o=document.createElement('option'); o.value=f; o.textContent=f; selFac.appendChild(o);
+    });
+  }
+  if(selProg && selProg.options.length <= 1) {
+    Object.keys(D.a_funciones_programa).sort().forEach(p=>{
+      const o=document.createElement('option'); o.value=p; o.textContent=p; selProg.appendChild(o);
+    });
+    selProg.value='';
+  }
+  drawAprobFunciones();
+}
+
+function drawAprobFunciones() {
+  const fac  = (document.getElementById('sel-fac-aprob')  || {}).value || '';
+  const prog = (document.getElementById('sel-prog-aprob') || {}).value || '';
+
+  let words = [], titulo = '';
+  if(prog && D.a_funciones_programa[prog]) {
+    words  = D.a_funciones_programa[prog];
+    titulo = prog;
+  } else if(fac && D.a_funciones_fac && D.a_funciones_fac[fac]) {
+    words  = D.a_funciones_fac[fac];
+    titulo = fac;
+  } else {
+    words  = D.a_funciones_kw;
+    titulo = 'Todos los programas';
+  }
+
+  const labels = words.map(w=>w.word);
+  const values = words.map(w=>w.count);
+  const wrap   = document.getElementById('wrap-aprob-func');
+  if(wrap) wrap.style.height = Math.max(300, labels.length * 42 + 60) + 'px';
+  mkBar('c-aprob-func', labels, values, {horiz:true, colors:pal(labels.length, PAL_BLUE)});
+
+  const el = document.getElementById('aprob-kw-count');
+  if(el) el.textContent = labels.length
+    ? `${labels.length} términos clave · ${titulo.length>50?titulo.slice(0,48)+'…':titulo}`
+    : 'Sin datos para la selección';
+}
+
+function onAprobFacChange() {
+  const fac     = (document.getElementById('sel-fac-aprob') || {}).value || '';
+  const selProg = document.getElementById('sel-prog-aprob');
+  if(!selProg) { drawAprobFunciones(); return; }
+  selProg.innerHTML = '<option value="">Todos los programas</option>';
+  const progs = fac
+    ? (D.fac_prog[fac] || []).filter(p => D.a_funciones_programa[p])
+    : Object.keys(D.a_funciones_programa).sort();
+  progs.forEach(p=>{
+    const o=document.createElement('option'); o.value=p; o.textContent=p; selProg.appendChild(o);
+  });
+  selProg.value='';
+  drawAprobFunciones();
+}
+
+function onAprobProgChange() { drawAprobFunciones(); }
+
+// ── Encuesta helpers ──────────────────────────────────────────────────────────
+function parseMulti(rows, key, top=12) {
+  const c={};
+  rows.forEach(r=>{
+    if(!r[key]) return;
+    r[key].split(';').forEach(p=>{
+      p=p.trim();
+      if(p && p.toLowerCase()!=='nan') c[p]=(c[p]||0)+1;
+    });
+  });
+  let pairs=Object.entries(c).sort((a,b)=>b[1]-a[1]);
+  if(top>0) pairs=pairs.slice(0,top);
+  return {labels:pairs.map(p=>p[0]), values:pairs.map(p=>p[1])};
+}
+
+function countCalif(rows, key) {
+  const order=['EXCELENTE','BUENO','REGULAR','DEFICIENTE'];
+  const c={};
+  rows.forEach(r=>{
+    const v=(r[key]||'').toUpperCase().trim();
+    if(v) c[v]=(c[v]||0)+1;
+  });
+  return {order: order.filter(o=>c[o]), counts: order.reduce((a,o)=>{a[o]=c[o]||0;return a;},{})};
+}
+
+function buildCalifDatasets(rows, criterioKeys, criterioLabels) {
+  const order=['EXCELENTE','BUENO','DEFICIENTE'];
+  const colores={EXCELENTE:'#10b981', BUENO:'#00539B', REGULAR:'#E8A000', DEFICIENTE:'#ef4444'};
+  const totales=criterioKeys.map(k=>{
+    let t=0; rows.forEach(r=>{ if(r[k] && r[k].toUpperCase().trim()) t++; }); return t||1;
+  });
+  return order.map(cat=>({
+    label: cat,
+    bg: colores[cat],
+    data: criterioKeys.map((k,i)=>{
+      let cnt=0; rows.forEach(r=>{ if((r[k]||'').toUpperCase().trim()===cat) cnt++; });
+      return Math.round(cnt/totales[i]*100);
+    })
+  }));
+}
+
+function renderEncuesta() {
+  const rows = filterRows(D.enc_raw, {progKey:'programa', facKey:null});
+  const n = rows.length;
+  const emps = new Set(rows.map(r=>r.empresa).filter(Boolean)).size;
+  const vinSi = rows.filter(r=>(r.vinculacionpracticantes||'').toUpperCase()==='SI').length;
+  const pctVin = n ? Math.round(vinSi/n*100) : 0;
+  const sectores = new Set(rows.map(r=>r.sector).filter(Boolean)).size;
+
+  document.getElementById('hero-enc').innerHTML=
+    heroStat(n,'Encuestas','') +
+    heroStat(emps,'Empresas','') +
+    heroStat(pctVin+'%','Vincularían','green') +
+    heroStat(sectores,'Sectores','gold');
+
+  document.getElementById('kpi-enc').innerHTML=
+    kpiCard(n,'Encuestas respondidas','Total período','') +
+    kpiCard(emps,'Empresas únicas','Participantes','purple') +
+    kpiCard(vinSi,'Vincularían practicantes',`${pctVin}% dispuestas`,'green') +
+    kpiCard(n-vinSi,'No vincularían',`${100-pctVin}% del total`,'red') +
+    kpiCard(sectores,'Sectores económicos','Representados','gold');
+
+  const top1Sec = groupBy(rows,'sector',1).labels[0]||'N/A';
+  const top1Prog= groupBy(rows,'programa',1).labels[0]||'N/A';
+  document.getElementById('stat-enc').innerHTML=
+    `Se analizaron <strong>${n}</strong> encuestas de <strong>${emps}</strong> empresas únicas.
+     El <strong>${pctVin}%</strong> manifestó disposición para vincular practicantes.
+     Sector más representado: <strong>${top1Sec}</strong>.
+     Programa con mayor participación: <strong>${top1Prog}</strong>.`;
+
+  // Calificaciones apiladas (stacked bar %)
+  const criterioKeys  = ['IMPACTO_SOCIAL','CALIF_FORMACION_EG','CALIF_DESEMPENO_EG','CALIF_FORMACION_PRAC','CALIF_DESEMPENO_PRAC'];
+  const criterioLabels= ['Impacto social ITM','Formación egresado','Desempeño egresado','Formación practicante','Desempeño practicante'];
+  const datasets = buildCalifDatasets(rows, criterioKeys, criterioLabels);
+  mkStacked('c-enc-calif', criterioLabels, datasets);
+
+  // Vinculación
+  const vinc = groupBy(rows,'vinculacionpracticantes');
+  mkDoughnut('c-enc-vinculacion', vinc.labels, vinc.values, [C.green, C.orange, C.gold]);
+
+  // Tipo empresa
+  const tipo = groupBy(rows,'tipo');
+  mkDoughnut('c-enc-tipo', tipo.labels, tipo.values, [C.blue, C.gold, C.teal, C.purple]);
+
+  // Mercado
+  const merc = groupBy(rows,'mercado');
+  mkDoughnut('c-enc-mercado', merc.labels, merc.values, [C.blue3, C.gold, C.green]);
+
+  // Sector
+  const sec = groupBy(rows,'sector',15);
+  mkBar('c-enc-sector', sec.labels, sec.values, {horiz:true, colors:pal(sec.labels.length, PAL_MAIN)});
+
+  // Fortalezas y debilidades practicante
+  const fp = parseMulti(rows,'FORTALEZAS_PRAC');
+  mkBar('c-enc-fort-prac', fp.labels, fp.values, {horiz:true, colors:pal(fp.labels.length,PAL_BLUE)});
+
+  const dp = parseMulti(rows,'DEBILIDADES_PRAC');
+  mkBar('c-enc-deb-prac', dp.labels, dp.values, {horiz:true, colors:pal(dp.labels.length,['#475569','#64748b','#334155','#94a3b8','#1e293b'])});
+
+  // Fortalezas y debilidades egresado
+  const fe = parseMulti(rows,'FORTALEZAS_EG');
+  mkBar('c-enc-fort-eg', fe.labels, fe.values, {horiz:true, colors:pal(fe.labels.length,PAL_BLUE)});
+
+  const de = parseMulti(rows,'DEBILIDADES_EG');
+  mkBar('c-enc-deb-eg', de.labels, de.values, {horiz:true, colors:pal(de.labels.length,['#475569','#64748b','#334155','#94a3b8','#1e293b'])});
+
+  // Competencias demandadas
+  const comp = parseMulti(rows,'COMPETENCIAS');
+  mkBar('c-enc-competencias', comp.labels, comp.values, {horiz:true, colors:pal(comp.labels.length,PAL_GOLD)});
+
+  // Programas
+  const prog = groupBy(rows,'programa',20);
+  const wrapP = document.getElementById('wrap-enc-prog');
+  if(wrapP) wrapP.style.width = Math.max(700, prog.labels.length*62)+'px';
+  mkBar('c-enc-programas', prog.labels, prog.values, {horiz:false});
+
+  // Evolución por año
+  const anios = groupBy(rows,'ANIO');
+  const aniosSorted = [...anios.labels.map((l,i)=>({l,v:anios.values[i]}))].sort((a,b)=>a.l-b.l);
+  mkLine('c-enc-anio', aniosSorted.map(x=>x.l), aniosSorted.map(x=>x.v), C.gold);
+}
+
+// ── Encuesta Estudiantes ──────────────────────────────────────────────────────
+const EST_CALIF_KEYS   = ['CALIF_FORMACION','CALIF_ORIENTACION','CALIF_PERTINENCIA',
+                           'CALIF_TUTOR','CALIF_DESEMPENO','CALIF_PUESTO',
+                           'CALIF_ASESOR_ITM','CALIF_SEGUIMIENTO','CALIF_INFORMACION',
+                           'SATISFACCION_GENERAL'];
+const EST_CALIF_LABELS = ['Formación académica','Orientación profesional','Pertinencia práctica',
+                           'Tutor empresarial','Desempeño de tareas','Puesto de trabajo',
+                           'Asesor Oficina Prácticas','Seguimiento Oficina','Información normatividad',
+                           'Satisfacción general'];
+const EST_SCORE_MAP = {excelente:3,bueno:2,deficiente:1};
+
+function estScore(rows, keys) {
+  let t=0, n=0;
+  rows.forEach(r=>keys.forEach(k=>{
+    const v=EST_SCORE_MAP[(r[k]||'').toLowerCase().trim()];
+    if(v){t+=v;n++;}
+  }));
+  return n ? t/n : 0;
+}
+
+function scoreBarColor(s) {
+  if(s>=2.7) return C.green;
+  if(s>=2.3) return C.teal;
+  if(s>=1.8) return C.gold;
+  return C.orange;
+}
+
+function mkBarScore(id, labels, scores, counts) {
+  const c=document.getElementById(id);
+  if(!c) return; if(c._ch) c._ch.destroy();
+  const maxV=Math.max(...scores,1);
+  c._ch=new Chart(c,{
+    type:'bar',
+    data:{labels, datasets:[{
+      data:scores,
+      backgroundColor: scores.map(s=>scoreBarColor(s)),
+      borderRadius:4, borderSkipped:false, barThickness:'flex', maxBarThickness:28
+    }]},
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      layout:{padding:{right:56}},
+      scales:{
+        x:{min:1,max:3,grid:{color:'#eef1f7'},
+           ticks:{font:{size:10}, callback:v=>v.toFixed(1)},
+           title:{display:true,text:'Índice (1=Deficiente · 2=Bueno · 3=Excelente)',font:{size:9},color:'#4b5e7e'}},
+        y:{grid:{display:false},ticks:{font:{size:10},
+           callback:function(v){const l=this.getLabelForValue(v);return l&&l.length>32?l.slice(0,30)+'…':l;}}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:x=>{
+          const i=x.dataIndex;
+          return ` Score: ${x.parsed.x.toFixed(2)}  |  n=${counts[i]} resp.`;
+        }}},
+        datalabels:{anchor:'end',align:'right',offset:4,
+          color:'#1a2540',font:{size:10,weight:'bold'},
+          formatter:(v,ctx)=>{
+            const i=ctx.dataIndex;
+            return v.toFixed(2)+(counts&&counts[i]?' ('+counts[i]+')'  :'');
+          },clamp:true}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+function renderEncuestaEst() {
+  const rows = filterRows(D.est_raw, {facKey:null});
+  const n = rows.length;
+  const recSi = rows.filter(r=>(r.RECOMIENDA||'').toUpperCase()==='SI').length;
+  const pctRec = n ? Math.round(recSi/n*100) : 0;
+  const excGen = rows.filter(r=>(r.SATISFACCION_GENERAL||'').toLowerCase()==='excelente').length;
+  const pctExc = n ? Math.round(excGen/n*100) : 0;
+  const progs  = new Set(rows.map(r=>r.PROGRAMA).filter(Boolean)).size;
+
+  document.getElementById('hero-est').innerHTML=
+    heroStat(n,'Respuestas','') +
+    heroStat(pctRec+'%','Recomendarían','green') +
+    heroStat(pctExc+'%','Satisf. Excelente','gold') +
+    heroStat(progs,'Programas','');
+
+  document.getElementById('kpi-est').innerHTML=
+    kpiCard(n,'Encuestas respondidas','Total período','') +
+    kpiCard(recSi,'Recomendarían la práctica',`${pctRec}% del total`,'green') +
+    kpiCard(excGen,'Satisfacción general Excelente',`${pctExc}% de respuestas`,'gold') +
+    kpiCard(n-recSi,'No recomendarían',`${100-pctRec}% del total`,'') +
+    kpiCard(progs,'Programas participantes','Representados','purple');
+
+  const top1Prog = groupBy(rows,'PROGRAMA',1).labels[0]||'N/A';
+  const top1Mod  = groupBy(rows,'MODALIDAD',1).labels[0]||'N/A';
+  const scoreGlobal = estScore(rows, EST_CALIF_KEYS);
+  document.getElementById('stat-est').innerHTML=
+    `Se analizaron <strong>${n}</strong> encuestas de estudiantes.
+     El <strong>${pctRec}%</strong> recomendaría realizar la práctica profesional.
+     El índice de satisfacción global es <strong>${scoreGlobal.toFixed(2)}/3.00</strong>.
+     Programa con más respuestas: <strong>${top1Prog}</strong>.
+     Modalidad predominante: <strong>${top1Mod}</strong>.`;
+
+  // ── Calificaciones comparadas (stacked %)
+  const datasets = buildCalifDatasets(rows, EST_CALIF_KEYS, EST_CALIF_LABELS);
+  mkStacked('c-est-calif', EST_CALIF_LABELS, datasets);
+
+  // ── Satisfacción general
+  const satisf = groupBy(rows,'SATISFACCION_GENERAL');
+  const satisfOrder = ['Excelente','Bueno','Deficiente'];
+  const satisfSorted = satisfOrder.filter(o=>satisf.labels.includes(o));
+  mkDoughnut('c-est-satisf', satisfSorted,
+    satisfSorted.map(o=>satisf.values[satisf.labels.indexOf(o)]),
+    [C.green, C.blue, C.orange]);
+
+  // ── Recomendaría
+  const rec = groupBy(rows,'RECOMIENDA');
+  mkDoughnut('c-est-rec', rec.labels, rec.values, [C.green, C.orange]);
+
+  // ── Modalidad
+  const mod = groupBy(rows,'MODALIDAD');
+  mkDoughnut('c-est-modal', mod.labels, mod.values, [C.blue, C.gold, C.teal]);
+
+  // ── Proyecto a futuro
+  const fut = groupBy(rows,'PROYECTO_FUTURO');
+  mkBar('c-est-futuro', fut.labels, fut.values,
+    {horiz:true, colors:pal(fut.labels.length,[C.blue,C.gold,C.green,C.purple,C.teal])});
+
+  // ── Score por programa (dinámico desde rows)
+  const progMap={};
+  rows.forEach(r=>{
+    const p=r.PROGRAMA; if(!p) return;
+    if(!progMap[p]) progMap[p]={t:0,n:0,cnt:0};
+    EST_CALIF_KEYS.forEach(k=>{
+      const v=EST_SCORE_MAP[(r[k]||'').toLowerCase().trim()];
+      if(v){progMap[p].t+=v;progMap[p].n++;}
+    });
+    progMap[p].cnt++;
+  });
+  const progScores=Object.entries(progMap)
+    .map(([p,d])=>({p,s:d.n?d.t/d.n:0,cnt:d.cnt}))
+    .filter(x=>x.cnt>=3)
+    .sort((a,b)=>b.s-a.s);
+  const psLabels=progScores.map(x=>x.p);
+  const psValues=progScores.map(x=>parseFloat(x.s.toFixed(2)));
+  const psCounts=progScores.map(x=>x.cnt);
+  const wrapPS=document.getElementById('wrap-est-prog-score');
+  if(wrapPS) wrapPS.style.height=Math.max(300,psLabels.length*36+60)+'px';
+  mkBarScore('c-est-prog-score', psLabels, psValues, psCounts);
+
+  // ── Programas con más respuestas
+  const prog=groupBy(rows,'PROGRAMA',20);
+  const wrapP=document.getElementById('wrap-est-prog');
+  if(wrapP) wrapP.style.width=Math.max(700,prog.labels.length*62)+'px';
+  mkBar('c-est-prog', prog.labels, prog.values, {horiz:false});
+
+  // ── Top 15 empresas
+  const emp=groupBy(rows,'EMPRESA',15);
+  mkBar('c-est-empresa', emp.labels, emp.values,
+    {horiz:true, colors:pal(emp.labels.length, PAL_MAIN)});
+
+  // ── Score por asesor (dinámico desde rows)
+  const asMap={};
+  rows.forEach(r=>{
+    const a=r.ASESOR_NOMBRE; if(!a||a.length<4) return;
+    if(!asMap[a]) asMap[a]={t:0,n:0,cnt:0};
+    EST_CALIF_KEYS.forEach(k=>{
+      const v=EST_SCORE_MAP[(r[k]||'').toLowerCase().trim()];
+      if(v){asMap[a].t+=v;asMap[a].n++;}
+    });
+    asMap[a].cnt++;
+  });
+  const asScores=Object.entries(asMap)
+    .map(([a,d])=>({a,s:d.n?d.t/d.n:0,cnt:d.cnt}))
+    .filter(x=>x.cnt>=2)
+    .sort((a,b)=>b.s-a.s)
+    .slice(0,20);
+  const asLabels=asScores.map(x=>x.a);
+  const asValues=asScores.map(x=>parseFloat(x.s.toFixed(2)));
+  const asCounts=asScores.map(x=>x.cnt);
+  const wrapAS=document.getElementById('c-est-asesor-score');
+  if(wrapAS&&wrapAS.parentElement)
+    wrapAS.parentElement.style.height=Math.max(300,asLabels.length*36+60)+'px';
+  mkBarScore('c-est-asesor-score', asLabels, asValues, asCounts);
+
+  // ── Evolución semestral
+  const sem=semSort(rows);
+  mkLine('c-est-semestre', sem.labels, sem.values, C.blue);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -1694,6 +2546,8 @@ function render(name) {
   else if(name==='f082') renderF082();
   else if(name==='solicitud') renderSolicitud();
   else if(name==='aprobacion') renderAprobacion();
+  else if(name==='encuesta') renderEncuesta();
+  else if(name==='encuesta-est') renderEncuestaEst();
 }
 
 // ── Canvas Word Cloud ─────────────────────────────────────────────────────────
@@ -1865,9 +2719,11 @@ if __name__ == '__main__':
     df3 = load_f082()
     df4 = load_solicitud()
     df5 = load_aprobacion()
+    df6 = load_encuesta()
+    df7 = load_encuesta_est()
 
     print('Construyendo datos y agregaciones...')
-    data = build_data(df1, df2, df3, df4, df5)
+    data = build_data(df1, df2, df3, df4, df5, df6, df7)
 
     print('Generando HTML...')
     logo  = get_logo()
@@ -1879,4 +2735,4 @@ if __name__ == '__main__':
         f.write(html)
 
     print(f'OK  Generado: {out}  ({len(html)//1024} KB)')
-    print(f'    Practicantes: {len(df1)} | Disponibles: {len(df2)} | F082: {len(df3)} | Solicitud: {len(df4)} | Aprobacion: {len(df5)}')
+    print(f'    Practicantes: {len(df1)} | Disponibles: {len(df2)} | F082: {len(df3)} | Solicitud: {len(df4)} | Aprobacion: {len(df5)} | Enc.Empresarios: {len(df6)} | Enc.Estudiantes: {len(df7)}')
