@@ -311,6 +311,8 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
     data['all_programas'] = sorted(set(p for v in fac_prog.values() for p in v))
     data['all_facultades'] = sorted([k for k in fac_prog.keys() if k != 'SIN FACULTAD'])
 
+
+
     # Años y meses disponibles
     all_anios = sorted(set(
         df1[df1['ANIO']>0]['ANIO'].tolist() + df2[df2['ANIO']>0]['ANIO'].tolist() +
@@ -405,11 +407,16 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
     data['a_funciones_kw']       = [{'word':w,'count':c} for w,c in kw_extract(df5['FUNCIONES'].tolist(), n=20)]
 
     # ── Encuesta Satisfacción Empresarios ─────────────────────────────────────
+    def _clean_label(p):
+        import re
+        p = re.sub(r'^[A-Za-z]\.\s+', '', p)
+        return p.capitalize() if p else p
+
     def _count_multi(series, top=12):
         c = Counter()
         for v in series.dropna():
             for p in str(v).split(';'):
-                p = p.strip()
+                p = _clean_label(p.strip())
                 if p and p.lower() not in ('nan', 'none', ''):
                     c[p] += 1
         return [{'label': k, 'count': v} for k, v in c.most_common(top)]
@@ -419,8 +426,11 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
         s = series.dropna().str.upper().str.strip()
         return {o: int((s == o).sum()) for o in order if int((s == o).sum()) > 0}
 
+    # Normalizar programa en enc (puede venir en minúsculas o mixto) para que coincida con all_programas
+    if 'programa' in df6.columns:
+        df6['PROGRAMA'] = df6['programa'].str.upper().str.strip()
     data['enc_raw'] = raw_records(df6,
-        ['empresa', 'sector', 'mercado', 'tipo', 'programa',
+        ['empresa', 'sector', 'mercado', 'tipo', 'PROGRAMA',
          'IMPACTO_SOCIAL', 'CALIF_FORMACION_EG', 'CALIF_DESEMPENO_EG',
          'CALIF_FORMACION_PRAC', 'CALIF_DESEMPENO_PRAC',
          'FORTALEZAS_PRAC', 'DEBILIDADES_PRAC',
@@ -447,6 +457,8 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
                  'SATISFACCION_GENERAL']
     EST_SCORE_MAP = {'Excelente':3,'Bueno':2,'Deficiente':1}
 
+    if 'PROGRAMA' in df7.columns:
+        df7['PROGRAMA'] = df7['PROGRAMA'].str.upper().str.strip()
     data['est_raw'] = raw_records(df7,
         ['PROGRAMA','EMPRESA','MODALIDAD','PROYECTO_FUTURO','ASESOR_NOMBRE',
          'RECOMIENDA','SATISFACCION_GENERAL'] + EST_CALIF +
@@ -608,37 +620,53 @@ nav::-webkit-scrollbar { display:none }
 .filter-bar {
   background: var(--surface);
   border-bottom: 2px solid var(--border);
-  padding: 10px 28px;
-  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  padding: 8px 24px;
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px 0;
+  position:sticky; top:0; z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
 }
-.filter-group { display:flex; align-items:center; gap:6px }
+.filter-cluster {
+  display:flex; align-items:center; gap:6px;
+  padding: 2px 14px 2px 0; margin-right:14px;
+  border-right: 2px solid var(--border);
+}
+.filter-cluster:last-of-type { border-right:none; margin-right:6px; }
+.filter-cluster-label {
+  font-size:.62rem; font-weight:800; color:var(--itm-blue);
+  text-transform:uppercase; letter-spacing:.8px; white-space:nowrap;
+  margin-right:4px; padding:2px 6px;
+  background:rgba(0,83,155,.07); border-radius:4px;
+}
+.filter-group { display:flex; align-items:center; gap:4px }
 .filter-label {
-  font-size:.7rem; font-weight:700; color:var(--text2);
-  text-transform:uppercase; letter-spacing:.5px; white-space:nowrap;
+  font-size:.67rem; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.4px; white-space:nowrap;
 }
 .filter-select {
   border: 1.5px solid var(--border); border-radius:var(--radius-sm);
-  padding: 5px 28px 5px 10px; font-size:.82rem; color:var(--text);
-  background: #f4f7fd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300539B'/%3E%3C/svg%3E") no-repeat right 9px center;
+  padding: 4px 24px 4px 8px; font-size:.78rem; color:var(--text);
+  background: #f4f7fd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300539B'/%3E%3C/svg%3E") no-repeat right 7px center;
   appearance:none; cursor:pointer;
   transition:border-color .2s, box-shadow .2s;
-  max-width:220px;
 }
 .filter-select:focus { outline:none; border-color:var(--itm-blue); box-shadow:0 0 0 3px rgba(0,83,155,.12) }
+.filter-select.sel-sm  { max-width:90px }
+.filter-select.sel-md  { max-width:160px }
+.filter-select.sel-lg  { max-width:210px }
 .btn-reset {
   background: linear-gradient(135deg, var(--itm-gold), var(--itm-gold2));
   color:#fff; border:none; border-radius:var(--radius-sm);
-  padding:5px 14px; cursor:pointer; font-size:.78rem; font-weight:700;
+  padding:4px 12px; cursor:pointer; font-size:.75rem; font-weight:700;
   transition:var(--transition); box-shadow:0 2px 8px rgba(232,160,0,.3);
-  letter-spacing:.2px;
+  letter-spacing:.2px; white-space:nowrap;
 }
 .btn-reset:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(232,160,0,.4) }
 .filter-info {
-  font-size:.72rem; color:var(--itm-blue);
+  font-size:.7rem; color:var(--itm-blue);
   background:rgba(0,83,155,.08); border-radius:20px;
-  padding:3px 10px; font-weight:600; letter-spacing:.2px;
+  padding:2px 10px; font-weight:600; letter-spacing:.2px; white-space:nowrap;
 }
-.filter-divider { width:1px; height:24px; background:var(--border) }
+.filter-divider { width:1px; height:20px; background:var(--border) }
 
 /* ── MAIN CONTENT ────────────────────────────── */
 main { padding: 24px 28px; max-width:1600px; margin:0 auto }
@@ -741,6 +769,25 @@ main { padding: 24px 28px; max-width:1600px; margin:0 auto }
   font-size:.84rem; line-height:1.8; color:var(--text2);
 }
 .stat-panel strong { color:var(--itm-blue); font-weight:700 }
+
+/* ── SECTION LOCAL FILTER ────────────────────── */
+.sec-filter-bar {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:rgba(0,83,155,.04); border:1.5px solid var(--border);
+  border-radius:var(--radius); padding:8px 16px; margin-bottom:18px;
+}
+.sec-filter-bar .filter-label { font-size:.7rem; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
+.sec-filter-title { font-size:.72rem; font-weight:800; color:var(--itm-blue);
+  text-transform:uppercase; letter-spacing:.6px; margin-right:4px; }
+.sec-filter-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:600;
+  border: 1.5px solid var(--border); background:var(--surface);
+  cursor:pointer; transition:all .18s; white-space:nowrap; color:var(--text2);
+}
+.sec-filter-chip:hover { border-color:var(--itm-blue); color:var(--itm-blue); }
+.sec-filter-chip.active { background:var(--itm-blue); color:#fff; border-color:var(--itm-blue); }
 
 /* ── CHARTS GRID ─────────────────────────────── */
 .charts-grid {
@@ -849,8 +896,12 @@ tr:hover td { background:#e8f0fb }
   .charts-grid { grid-template-columns:1fr }
   .header-top { padding:8px 16px }
   .header-titles h1 { font-size:.9rem }
-  .filter-bar { padding:8px 16px; gap:8px }
-  .filter-select { max-width:140px }
+  .filter-bar { padding:6px 12px; gap:4px }
+  .filter-cluster { padding:2px 8px 2px 0; margin-right:8px }
+  .filter-cluster-label { display:none }
+  .filter-select.sel-sm { max-width:72px }
+  .filter-select.sel-md { max-width:120px }
+  .filter-select.sel-lg { max-width:150px }
   .sec-hero { flex-direction:column }
   .sec-hero-right { width:100% }
 }
@@ -928,7 +979,7 @@ footer b { color:rgba(255,255,255,.8) }
   <div class="header-stripe"></div>
   <nav>
     <button class="nav-btn active" onclick="goTo('practicantes',this)">
-      <span class="dot"></span>📋 Practicantes
+      <span class="dot"></span>🎓 Practicantes
     </button>
     <button class="nav-btn" onclick="goTo('disponibles',this)">
       <span class="dot"></span>📑 Disponibles
@@ -953,39 +1004,46 @@ footer b { color:rgba(255,255,255,.8) }
 
 <!-- ═══════════════ FILTER BAR ═══════════════ -->
 <div class="filter-bar">
-  <div class="filter-group">
-    <span class="filter-label">Año</span>
-    <select id="f-anio" class="filter-select" onchange="onFilterChange()">
-      <option value="">Todos</option>
-    </select>
+  <!-- Grupo temporal -->
+  <div class="filter-cluster">
+    <span class="filter-cluster-label">📅 Período</span>
+    <div class="filter-group">
+      <span class="filter-label">Año</span>
+      <select id="f-anio" class="filter-select sel-sm" onchange="onFilterChange()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">Sem.</span>
+      <select id="f-sem" class="filter-select sel-sm" onchange="onFilterChange()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">Mes</span>
+      <select id="f-mes" class="filter-select sel-sm" onchange="onFilterChange()">
+        <option value="">Todos</option>
+      </select>
+    </div>
   </div>
-  <div class="filter-divider"></div>
-  <div class="filter-group">
-    <span class="filter-label">Semestre</span>
-    <select id="f-sem" class="filter-select" onchange="onFilterChange()">
-      <option value="">Todos</option>
-    </select>
-  </div>
-  <div class="filter-divider"></div>
-  <div class="filter-group">
-    <span class="filter-label">Mes</span>
-    <select id="f-mes" class="filter-select" onchange="onFilterChange()">
-      <option value="">Todos</option>
-    </select>
-  </div>
-  <div class="filter-divider"></div>
-  <div class="filter-group">
-    <span class="filter-label">Facultad</span>
-    <select id="f-facultad" class="filter-select" onchange="onFacultadChange()">
-      <option value="">Todas</option>
-    </select>
-  </div>
-  <div class="filter-divider"></div>
-  <div class="filter-group">
-    <span class="filter-label">Programa</span>
-    <select id="f-programa" class="filter-select" onchange="onFilterChange()">
-      <option value="">Todos</option>
-    </select>
+  <!-- Grupo académico -->
+  <div class="filter-cluster">
+    <span class="filter-cluster-label">🎓 Académico</span>
+    <div class="filter-group">
+      <span class="filter-label">Facultad</span>
+      <select id="f-facultad" class="filter-select sel-md" onchange="onFacultadChange()">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-group">
+      <span class="filter-label">Programa</span>
+      <select id="f-programa" class="filter-select sel-lg" onchange="onFilterChange()">
+        <option value="">Todos</option>
+      </select>
+    </div>
   </div>
   <button class="btn-reset" onclick="resetFilters()">↺ Limpiar</button>
   <span id="f-info" class="filter-info" style="display:none"></span>
@@ -998,7 +1056,7 @@ footer b { color:rgba(255,255,255,.8) }
 <section id="sec-practicantes" class="section active">
   <div class="sec-hero">
     <div class="sec-hero-left">
-      <div class="sec-hero-icon">📋</div>
+      <div class="sec-hero-icon">🎓</div>
       <h2>Practicantes en Práctica Profesional</h2>
       <p>Estado, tipo de contrato, empresa, asesor, programa y facultad</p>
     </div>
@@ -1006,6 +1064,12 @@ footer b { color:rgba(255,255,255,.8) }
   </div>
   <div class="kpi-row" id="kpi-pract"></div>
   <div class="stat-panel" id="stat-pract"></div>
+  <!-- Filtro local de Estado -->
+  <div class="sec-filter-bar">
+    <span class="sec-filter-title">⚡ Estado</span>
+    <button class="sec-filter-chip active" onclick="setEstadoPract('')">Todos</button>
+    <span id="chips-estado-pract"></span>
+  </div>
   <div class="charts-grid">
     <div class="card">
       <div class="card-head"><h3>Estado de los practicantes</h3><span class="card-badge" id="cb-p-estado"></span></div>
@@ -1187,7 +1251,7 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Evolución mensual de solicitudes</h3></div>
       <div class="card-body"><div class="ch h260"><canvas id="c-s-mes"></canvas></div></div>
     </div>
-    <div class="card">
+    <div class="card full">
       <div class="card-head"><h3>Solicitudes por año</h3></div>
       <div class="card-body"><div class="ch h260"><canvas id="c-s-anio"></canvas></div></div>
     </div>
@@ -1426,7 +1490,7 @@ footer b { color:rgba(255,255,255,.8) }
 
 <footer>
   <b>ITM &ndash; Institución Universitaria</b> &nbsp;·&nbsp; <span>Prácticas Profesionales ITM</span>
-  &nbsp;·&nbsp; Informe generado automáticamente
+  &nbsp;·&nbsp; Informe de Indicadores
 </footer>
 
 <!-- ═══════════════ JAVASCRIPT ═══════════════ -->
@@ -1615,6 +1679,33 @@ function mkLine(id, labels, vals, color=C.blue) {
 
 // ── Filter state ─────────────────────────────────────────────────────────────
 let fAnio='', fSem='', fMes='', fFac='', fProg='';
+let fEstadoPract = '';
+
+function setEstadoPract(val) {
+  fEstadoPract = val;
+  // Actualizar chips activos
+  document.querySelectorAll('#chips-estado-pract .sec-filter-chip, .sec-filter-bar .sec-filter-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.val === val || (val==='' && c.dataset.val===undefined));
+  });
+  renderPracticantes();
+}
+
+function initChipsEstado(estados) {
+  const container = document.getElementById('chips-estado-pract');
+  if(!container) return;
+  container.innerHTML = '';
+  estados.forEach(e => {
+    const b = document.createElement('button');
+    b.className = 'sec-filter-chip' + (fEstadoPract===e ? ' active' : '');
+    b.textContent = e;
+    b.dataset.val = e;
+    b.onclick = () => setEstadoPract(e);
+    container.appendChild(b);
+  });
+  // Marcar "Todos" correctamente
+  const allBtn = document.querySelector('.sec-filter-bar .sec-filter-chip:not([data-val])');
+  if(allBtn) { allBtn.dataset.val=''; allBtn.classList.toggle('active', fEstadoPract===''); }
+}
 
 function onFacultadChange() {
   fFac = document.getElementById('f-facultad').value;
@@ -1649,8 +1740,7 @@ function resetFilters() {
   ['f-anio','f-sem','f-mes','f-facultad','f-programa'].forEach(id=>{
     document.getElementById(id).value='';
   });
-  fAnio=fSem=fMes=fFac=fProg='';
-  // Restore all programs
+  fAnio=fSem=fMes=fFac=fProg=''; fEstadoPract='';
   const pSel = document.getElementById('f-programa');
   pSel.innerHTML = '<option value="">Todos</option>';
   D.all_programas.forEach(p=>{
@@ -1679,7 +1769,7 @@ function filterRows(rows, {progKey='PROGRAMA', facKey='FACULTAD'}={}) {
     if(fAnio && String(r.ANIO) !== fAnio) return false;
     if(fSem  && r.SEMESTRE !== fSem)      return false;
     if(fMes  && String(r.MES) !== fMes)   return false;
-    if(fFac  && facKey && r[facKey] !== fFac)  return false;
+    if(fFac  && facKey  && r[facKey]  !== fFac)  return false;
     if(fProg && progKey && r[progKey] !== fProg) return false;
     return true;
   });
@@ -1784,7 +1874,14 @@ function renderTableEP(rows) {
 
 // ── RENDERERS ────────────────────────────────────────────────────────────────
 function renderPracticantes() {
-  const rows = filterRows(D.raw_practicantes);
+  const allRows = filterRows(D.raw_practicantes);
+
+  // Poblar chips de estado con los valores únicos del subconjunto actual
+  const estados = [...new Set(allRows.map(r=>r.ESTADO).filter(Boolean))].sort();
+  initChipsEstado(estados);
+
+  // Aplicar filtro local de estado
+  const rows = fEstadoPract ? allRows.filter(r=>r.ESTADO===fEstadoPract) : allRows;
   const n=rows.length;
   const activos=rows.filter(r=>r.ESTADO&&r.ESTADO.toLowerCase().includes('activo')).length;
   const nuevas=rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
@@ -1962,7 +2059,7 @@ function renderF082() {
       type:'bar',
       data:{ labels:vaYears, datasets:[
         { label:'Vinculado',    data:vaSi, backgroundColor:C.green,  borderRadius:5, borderSkipped:false },
-        { label:'No vinculado', data:vaNo, backgroundColor:C.orange, borderRadius:5, borderSkipped:false }
+        { label:'No vinculado', data:vaNo, backgroundColor:C.blue,   borderRadius:5, borderSkipped:false }
       ]},
       options:{
         responsive:true, maintainAspectRatio:false,
@@ -2064,7 +2161,7 @@ function onF082ProgChange() {
 function updateF082Count() { /* reemplazado por drawAreasF082 */ }
 
 function renderSolicitud() {
-  const rows = filterRows(D.raw_solicitud, {progKey:'PERFIL_SOLICITADO', facKey:null});
+  const rows = filterRows(D.raw_solicitud, {progKey:'PROGRAMA_NUEVO', facKey:null});
   const n=rows.length;
   const nuevas=rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
   const emps=new Set(rows.map(r=>r.EMPRESA).filter(Boolean)).size;
@@ -2225,12 +2322,17 @@ function onAprobFacChange() {
 function onAprobProgChange() { drawAprobFunciones(); }
 
 // ── Encuesta helpers ──────────────────────────────────────────────────────────
+function cleanLabel(s) {
+  s = String(s).trim().replace(/^[A-Za-z]\.\s+/, '');
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
 function parseMulti(rows, key, top=12) {
   const c={};
   rows.forEach(r=>{
     if(!r[key]) return;
     r[key].split(';').forEach(p=>{
-      p=p.trim();
+      p=cleanLabel(p.trim());
       if(p && p.toLowerCase()!=='nan') c[p]=(c[p]||0)+1;
     });
   });
@@ -2266,7 +2368,7 @@ function buildCalifDatasets(rows, criterioKeys, criterioLabels) {
 }
 
 function renderEncuesta() {
-  const rows = filterRows(D.enc_raw, {progKey:'programa', facKey:null});
+  const rows = filterRows(D.enc_raw, {progKey:'PROGRAMA', facKey:null});
   const n = rows.length;
   const emps = new Set(rows.map(r=>r.empresa).filter(Boolean)).size;
   const vinSi = rows.filter(r=>(r.vinculacionpracticantes||'').toUpperCase()==='SI').length;
@@ -2730,7 +2832,7 @@ if __name__ == '__main__':
     dj    = json.dumps(data, ensure_ascii=False, default=str)
     html  = HTML.replace('__LOGO__', logo).replace('__DATA_JSON__', dj)
 
-    out = 'informe_practicas_itm.html'
+    out = 'index.html'
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
 
