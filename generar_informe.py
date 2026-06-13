@@ -36,6 +36,8 @@ def load_practicantes():
     for c in ['PROGRAMA','FACULTAD','EMPRESA_NUEVA','TIPO_CONTRATO','ESTADO','ASESOR','MODALIDAD']:
         df[c] = df[c].apply(clean_text)
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors='coerce')
+    df['FECHA_FIN']    = pd.to_datetime(df['FECHA_FIN'],    errors='coerce')
+    df['FECHA_FIN_STR']= df['FECHA_FIN'].dt.strftime('%Y-%m-%d').fillna('')
     df['ANIO']      = df['FECHA_INICIO'].dt.year.fillna(0).astype(int)
     df['MES']       = df['FECHA_INICIO'].dt.month.fillna(0).astype(int)
     df['MES_LABEL'] = df['MES'].map(lambda x: MESES_ES.get(x, 'Sin mes'))
@@ -63,6 +65,7 @@ def load_disponibles():
 def load_f082():
     df = pd.read_excel('BD F082 TRABAJOS ENTREGADOS.xlsx', sheet_name=0, engine='openpyxl')
     df.columns = [c.strip() for c in df.columns]
+    df = df.iloc[1:].reset_index(drop=True)
     cols = list(df.columns)
     rename = {cols[0]:'MODALIDAD', cols[1]:'FECHA_INICIO', cols[2]:'FECHA_TERMINA',
               cols[3]:'EMPRESA_RAW', cols[4]:'CARGO', cols[5]:'RAZON_RAW',
@@ -71,7 +74,9 @@ def load_f082():
               cols[12]:'FECHA_ENTREGA', cols[13]:'FACULTAD', cols[14]:'SISTEMATIZACION_RAW',
               cols[15]:'ES_OPTIMA', cols[16]:'POR_QUE_NO_OPTIMA', cols[17]:'ENTREGADO'}
     df.rename(columns=rename, inplace=True)
-    df.drop(columns=['EMPRESA_RAW','RAZON_RAW','SISTEMATIZACION_RAW'], inplace=True)
+    df.drop(columns=['RAZON_RAW','SISTEMATIZACION_RAW'], inplace=True)
+    df['EMPRESA'] = df['EMPRESA_RAW'].apply(clean_text)
+    df.drop(columns=['EMPRESA_RAW'], inplace=True)
     for c in ['MODALIDAD','ASESOR','ACTIVIDADES','DESCRIPCION','VINCULADO','PROGRAMA','FACULTAD','ES_OPTIMA','ENTREGADO']:
         df[c] = df[c].apply(clean_text)
     df['FECHA_ENTREGA'] = pd.to_datetime(df['FECHA_ENTREGA'], errors='coerce')
@@ -89,11 +94,30 @@ def load_solicitud():
     cols = list(df.columns)
     rename = {cols[0]:'EMPRESA', cols[1]:'HORA_INICIO', cols[2]:'NIT_RAW',
               cols[3]:'EMPRESA_NUEVA', cols[4]:'PROGRAMA_NUEVO',
-              cols[5]:'PERFIL_SOLICITADO', cols[6]:'MODALIDAD'}
+              cols[5]:'PROGRAMA', cols[6]:'MODALIDAD', cols[7]:'FACULTAD'}
     df.rename(columns=rename, inplace=True)
     df.drop(columns=['NIT_RAW'], inplace=True)
-    for c in ['EMPRESA','EMPRESA_NUEVA','PROGRAMA_NUEVO','PERFIL_SOLICITADO','MODALIDAD']:
+    for c in ['EMPRESA','EMPRESA_NUEVA','PROGRAMA_NUEVO','PROGRAMA','MODALIDAD','FACULTAD']:
         df[c] = df[c].apply(clean_text)
+    # Normalizar nombres de facultad al estándar del dashboard
+    fac_norm = {
+        'Facultad Ciencias Economicas Y Administrativas Itm': 'CIENCIAS ECONOMICAS Y ADMINISTRATIVAS',
+        'Facultad De Ingenierias Itm': 'FACULTAD DE INGENIERIAS',
+        'Facultad Ciencias Exactas Y Aplicadas Itm': 'CIENCIAS EXACTAS Y APLICADAS',
+        'Facultad Artes Y Humanidades Itm': 'ARTES Y HUMANIDADES',
+    }
+    df['FACULTAD'] = df['FACULTAD'].replace(fac_norm)
+    df['FACULTAD'] = df['FACULTAD'].apply(
+        lambda x: x.upper().strip() if isinstance(x, str) and x.strip() else x)
+    # Rellenar FACULTAD vacía usando el PROGRAMA como clave
+    prog_fac = (df[df['FACULTAD'].notna() & (df['FACULTAD'].str.strip()!='')]
+                .groupby('PROGRAMA')['FACULTAD']
+                .agg(lambda x: x.mode().iloc[0] if len(x)>0 else None)
+                .to_dict())
+    df['FACULTAD'] = df.apply(
+        lambda r: prog_fac.get(r['PROGRAMA'], r['FACULTAD'])
+                  if (pd.isna(r['FACULTAD']) or str(r['FACULTAD']).strip()=='')
+                  else r['FACULTAD'], axis=1)
     df['HORA_INICIO'] = pd.to_datetime(df['HORA_INICIO'], errors='coerce')
     df['ANIO']      = df['HORA_INICIO'].dt.year.fillna(0).astype(int)
     df['MES']       = df['HORA_INICIO'].dt.month.fillna(0).astype(int)
@@ -179,6 +203,7 @@ def load_encuesta():
 def load_aprobacion():
     df = pd.read_excel('aprobación de funciones.xlsx', sheet_name=0, engine='openpyxl')
     df.columns = [c.strip() for c in df.columns]
+    df = df.iloc[1:].reset_index(drop=True)
     cols = list(df.columns)
     rename = {cols[0]:'PROGRAMA', cols[1]:'FUNCIONES', cols[2]:'EMPRESA',
               cols[3]:'NIT_RAW', cols[4]:'ESTADO_APROBACION',
@@ -301,11 +326,12 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
             if p and len(p) > 2:
                 fac_prog.setdefault(f, set()).add(p)
 
-    # también de solicitud (perfil)
-    for _, row in df4[['PERFIL_SOLICITADO']].drop_duplicates().iterrows():
-        p = clean_text(str(row['PERFIL_SOLICITADO'])) if pd.notna(row['PERFIL_SOLICITADO']) else ''
+    # también de solicitud (perfil/programa)
+    for _, row in df4[['PROGRAMA','FACULTAD']].drop_duplicates().iterrows():
+        p = clean_text(str(row['PROGRAMA'])) if pd.notna(row['PROGRAMA']) else ''
+        f = clean_text(str(row['FACULTAD'])) if pd.notna(row['FACULTAD']) else ''
         if p and len(p) > 2:
-            fac_prog.setdefault('SIN FACULTAD', set()).add(p)
+            fac_prog.setdefault(f if f else 'SIN FACULTAD', set()).add(p)
 
     data['fac_prog'] = {k: sorted(v) for k, v in fac_prog.items() if k != 'SIN FACULTAD'}
     data['all_programas'] = sorted(set(p for v in fac_prog.values() for p in v))
@@ -330,15 +356,27 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
 
     # ── Raw rows para filtrado client-side ──────────────────────────────────────
     data['raw_practicantes'] = raw_records(df1,
-        ['PROGRAMA','FACULTAD','EMPRESA_NUEVA','TIPO_CONTRATO','ESTADO','ASESOR','MODALIDAD','ANIO','MES','MES_LABEL','SEMESTRE'])
+        ['PROGRAMA','FACULTAD','EMPRESA_NUEVA','TIPO_CONTRATO','ESTADO','ASESOR','MODALIDAD','FECHA_FIN_STR','ANIO','MES','MES_LABEL','SEMESTRE'])
     data['raw_disponibles']  = raw_records(df2,
         ['MODALIDAD','PROGRAMA','FACULTAD','ESTADO','DISCAPACIDAD','TIPO_DISCAPACIDAD','ANIO','MES','MES_LABEL','SEMESTRE'])
     data['raw_f082']         = raw_records(df3,
-        ['MODALIDAD','ASESOR','ACTIVIDADES','PROMEDIO','VINCULADO','PROGRAMA','FACULTAD','ES_OPTIMA','ENTREGADO','ANIO','MES','MES_LABEL','SEMESTRE'])
+        ['MODALIDAD','ASESOR','ACTIVIDADES','PROMEDIO','VINCULADO','EMPRESA','PROGRAMA','FACULTAD','ES_OPTIMA','ENTREGADO','ANIO','MES','MES_LABEL','SEMESTRE'])
     data['raw_solicitud']    = raw_records(df4,
-        ['EMPRESA','EMPRESA_NUEVA','PROGRAMA_NUEVO','PERFIL_SOLICITADO','MODALIDAD','ANIO','MES','MES_LABEL','SEMESTRE'])
+        ['EMPRESA','EMPRESA_NUEVA','PROGRAMA_NUEVO','PROGRAMA','FACULTAD','MODALIDAD','ANIO','MES','MES_LABEL','SEMESTRE'])
     data['raw_aprobacion']   = raw_records(df5,
         ['PROGRAMA','FUNCIONES','EMPRESA','ESTADO_APROBACION','APROBADOR','ANIO','MES','MES_LABEL','SEMESTRE'])
+
+    # ── Análisis combinado Solicitud vs Aprobación por año ────────────────────
+    sol_anio = df4[df4['ANIO']>0].groupby('ANIO').size().to_dict()
+    apr_anio = df5[df5['ANIO']>0].groupby('ANIO').size().to_dict()
+    all_years = sorted(set(list(sol_anio.keys()) + list(apr_anio.keys())))
+    combined = []
+    for y in all_years:
+        sol = int(sol_anio.get(y, 0))
+        apr = int(apr_anio.get(y, 0))
+        pct = round(apr / sol * 100, 1) if sol > 0 else 0
+        combined.append({'anio': y, 'solicitudes': sol, 'aprobaciones': apr, 'pct': pct})
+    data['sol_vs_aprob'] = combined
 
     # ── F082: áreas de desempeño por PROGRAMA y por FACULTAD ─────────────────
     all_progs_f082 = sorted(df3['PROGRAMA'].dropna().apply(clean_text).unique().tolist())
@@ -569,6 +607,11 @@ header {
 .header-titles p {
   font-size: .72rem; color: rgba(255,255,255,.65);
   margin-top:1px; letter-spacing:.2px;
+}
+.header-note {
+  font-size:.63rem; color:rgba(255,255,255,.45);
+  margin-top:2px; letter-spacing:.1px; font-style:italic;
+  max-width:560px; line-height:1.4;
 }
 .header-badge {
   background: rgba(255,255,255,.12);
@@ -891,19 +934,63 @@ tr:hover td { background:#e8f0fb }
 .prog-bar-fill.gold { background:linear-gradient(90deg,var(--itm-gold2),var(--itm-gold)) }
 
 /* ── RESPONSIVE ──────────────────────────────── */
+/* Tablet (≤1024px) */
+@media(max-width:1024px) {
+  main { padding:18px 16px }
+  .charts-grid { grid-template-columns:repeat(auto-fill, minmax(300px,1fr)) }
+  .kpi-row { grid-template-columns:repeat(auto-fill, minmax(140px,1fr)) }
+  .sub-grid-1-2 { grid-template-columns:1fr !important }
+  .sub-grid-1-1 { grid-template-columns:1fr !important }
+  .sub-grid-1-1-1 { grid-template-columns:1fr 1fr !important }
+}
+/* Mobile (≤768px) */
 @media(max-width:768px) {
-  main { padding:16px }
+  main { padding:12px 10px }
   .charts-grid { grid-template-columns:1fr }
-  .header-top { padding:8px 16px }
-  .header-titles h1 { font-size:.9rem }
-  .filter-bar { padding:6px 12px; gap:4px }
-  .filter-cluster { padding:2px 8px 2px 0; margin-right:8px }
+  .kpi-row { grid-template-columns:repeat(2,1fr) }
+  .header-top { padding:8px 12px; gap:8px }
+  .header-brand img { height:36px }
+  .header-titles h1 { font-size:.85rem }
+  .header-titles p { display:none }
+  .header-badge { display:none }
+  nav { padding:0 8px }
+  .nav-btn { padding:9px 12px; font-size:.76rem; gap:4px }
+  .filter-bar { padding:6px 10px; gap:4px }
+  .filter-cluster { padding:2px 8px 2px 0; margin-right:6px }
   .filter-cluster-label { display:none }
-  .filter-select.sel-sm { max-width:72px }
-  .filter-select.sel-md { max-width:120px }
-  .filter-select.sel-lg { max-width:150px }
-  .sec-hero { flex-direction:column }
-  .sec-hero-right { width:100% }
+  .filter-select { font-size:.73rem; padding:3px 20px 3px 6px }
+  .filter-select.sel-sm { max-width:68px }
+  .filter-select.sel-md { max-width:110px }
+  .filter-select.sel-lg { max-width:130px }
+  .btn-reset { padding:3px 10px; font-size:.72rem }
+  .sec-hero { flex-direction:column; padding:16px }
+  .sec-hero-right { width:100%; justify-content:flex-start }
+  .hero-stat { min-width:70px; padding:8px 10px }
+  .hero-stat-val { font-size:1.3rem }
+  .stat-panel { font-size:.78rem; padding:12px 14px }
+  .kpi-num { font-size:1.6rem }
+  .card-head h3 { font-size:.78rem }
+  .card-body { padding:10px 12px 14px }
+  .tbl-scroll { max-height:260px }
+  .sub-grid-1-2 { grid-template-columns:1fr !important }
+  .sub-grid-1-1 { grid-template-columns:1fr !important }
+  .sub-grid-1-1-1 { grid-template-columns:1fr !important }
+  .sec-filter-bar { padding:6px 10px; gap:6px }
+  .prog-item-name { max-width:180px }
+}
+/* Small mobile (≤480px) */
+@media(max-width:480px) {
+  .kpi-row { grid-template-columns:1fr 1fr }
+  .hero-stat { min-width:60px; padding:6px 8px }
+  .hero-stat-val { font-size:1.1rem }
+  .filter-cluster-label { display:none }
+  .filter-select.sel-lg { max-width:110px }
+  nav { padding:0 4px }
+  .nav-btn { padding:8px 9px; font-size:.7rem }
+  .ch.h360 { height:280px }
+  .ch.h300 { height:240px }
+  .ch.h420 { height:300px }
+  .tbl-scroll { max-height:220px }
 }
 
 /* ── FOOTER ──────────────────────────────────── */
@@ -966,7 +1053,7 @@ footer b { color:rgba(255,255,255,.8) }
       <img src="__LOGO__" alt="ITM" onerror="this.style.display='none'">
       <div class="header-titles">
         <h1>Dashboard – Prácticas Profesionales</h1>
-        <p>ITM &ndash; Institución Universitaria &ndash; Prácticas Profesionales ITM</p>
+        <p>ITM &ndash; Institución Universitaria &ndash; Prácticas Profesionales ITM &ndash; Informe de Indicadores</p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -1080,8 +1167,8 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body"><div class="ch h240"><canvas id="c-p-contrato"></canvas></div></div>
     </div>
     <div class="card">
-      <div class="card-head"><h3>Empresa nueva vs. recurrente</h3></div>
-      <div class="card-body"><div class="ch h200"><canvas id="c-p-empnueva"></canvas></div></div>
+      <div class="card-head"><h3>Empresa nueva vs. recurrente por año</h3></div>
+      <div class="card-body"><div class="ch h260"><canvas id="c-p-empnueva"></canvas></div></div>
     </div>
     <div class="card">
       <div class="card-head"><h3>Modalidad de práctica</h3></div>
@@ -1100,7 +1187,7 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body"><div id="prog-list-pract" class="progress-list"></div></div>
     </div>
     <div class="card full">
-      <div class="card-head"><h3>Estudiantes por asesor (Todos)</h3></div>
+      <div class="card-head"><h3>Estudiantes por Monitor (Asesor de Prácticas)</h3></div>
       <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
         <div class="ch h360" id="wrap-p-asesor" style="min-width:700px">
           <canvas id="c-p-asesor"></canvas>
@@ -1191,6 +1278,7 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Histórico de vinculación laboral por año</h3><span class="card-badge">Vinculados vs. No vinculados</span></div>
       <div class="card-body"><div class="ch h300"><canvas id="c-f-vinc-anio"></canvas></div></div>
     </div>
+
   </div>
   <div class="card full" style="margin-bottom:18px">
     <div class="card-head">
@@ -1220,6 +1308,39 @@ footer b { color:rgba(255,255,255,.8) }
       </div>
     </div>
   </div>
+
+  <!-- Trabajos por Monitor con filtros locales -->
+  <div class="card full" style="margin-bottom:18px">
+    <div class="card-head">
+      <h3>Trabajos entregados por Monitor (Asesor de Prácticas)</h3>
+      <span class="card-badge">Total de F082 por asesor</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="filter-group">
+          <span class="filter-label">Año</span>
+          <select id="sel-anio-asesor-f082" class="filter-select sel-sm" onchange="renderAsesorF082()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Facultad</span>
+          <select id="sel-fac-asesor-f082" class="filter-select sel-md" onchange="renderAsesorF082()">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Programa</span>
+          <select id="sel-prog-asesor-f082" class="filter-select sel-lg" onchange="renderAsesorF082()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <button class="btn-reset" onclick="resetAsesorF082()">↺ Limpiar</button>
+        <span id="f082-asesor-count" style="font-size:.78rem;color:var(--text2);font-weight:600"></span>
+      </div>
+      <div id="wrap-asesor-f082" style="overflow-y:auto;max-height:600px"></div>
+    </div>
+  </div>
 </section>
 
 <!-- ────────────── SOLICITUD EMPRESAS ────────────── -->
@@ -1234,6 +1355,32 @@ footer b { color:rgba(255,255,255,.8) }
   </div>
   <div class="kpi-row" id="kpi-solic"></div>
   <div class="stat-panel" id="stat-solic"></div>
+
+  <!-- Filtros locales Solicitud -->
+  <div class="sec-filter-bar" style="margin-bottom:18px">
+    <span class="sec-filter-title">🔍 Filtrar</span>
+    <div class="filter-group">
+      <span class="filter-label">Año</span>
+      <select id="sel-anio-solic" class="filter-select sel-sm" onchange="renderSolicitud()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Facultad</span>
+      <select id="sel-fac-solic" class="filter-select sel-md" onchange="onSolicFacChange()">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Programa</span>
+      <select id="sel-prog-solic" class="filter-select sel-lg" onchange="renderSolicitud()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <button class="btn-reset" onclick="resetSolicFiltros()">↺ Limpiar</button>
+    <span id="solic-count" style="font-size:.78rem;color:var(--text2);font-weight:600"></span>
+  </div>
+
   <div class="charts-grid">
     <div class="card full">
       <div class="card-head"><h3>Perfiles más solicitados por empresas (Top 20)</h3></div>
@@ -1255,6 +1402,17 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Solicitudes por año</h3></div>
       <div class="card-body"><div class="ch h260"><canvas id="c-s-anio"></canvas></div></div>
     </div>
+    <!-- Gráfica combinada Solicitud vs Aprobación -->
+    <div class="card full">
+      <div class="card-head">
+        <h3>Demanda empresarial vs. Capacidad de atención por año</h3>
+        <span class="card-badge">Solicitudes · Aprobaciones · % Respuesta</span>
+      </div>
+      <div class="card-body">
+        <div class="ch h320"><canvas id="c-s-vs-aprob"></canvas></div>
+        <div id="analisis-ejecutivo" style="margin-top:18px;padding:16px 20px;background:var(--surface2);border-left:5px solid var(--itm-blue);border-radius:var(--radius);font-size:.84rem;line-height:1.8;color:var(--text2)"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1275,7 +1433,7 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Solicitudes de aprobación por programa</h3></div>
       <div class="card-body"><div class="ch h360"><canvas id="c-a-programa"></canvas></div></div>
     </div>
-    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 2fr;gap:18px">
+    <div class="sub-grid-1-2" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 2fr;gap:18px">
       <div class="card">
         <div class="card-head"><h3>Estado de aprobación</h3></div>
         <div class="card-body"><div class="ch h360"><canvas id="c-a-estado"></canvas></div></div>
@@ -1362,7 +1520,7 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-head"><h3>Distribución por sector económico</h3></div>
       <div class="card-body"><div class="ch h300"><canvas id="c-enc-sector"></canvas></div></div>
     </div>
-    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="sub-grid-1-1" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:18px">
       <div class="card">
         <div class="card-head"><h3>Fortalezas del practicante ITM</h3></div>
         <div class="card-body"><div class="ch h300"><canvas id="c-enc-fort-prac"></canvas></div></div>
@@ -1383,14 +1541,6 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Competencias más demandadas por el mercado</h3></div>
       <div class="card-body"><div class="ch h300"><canvas id="c-enc-competencias"></canvas></div></div>
-    </div>
-    <div class="card full">
-      <div class="card-head"><h3>Programas con mayor participación en la encuesta</h3></div>
-      <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
-        <div class="ch h300" id="wrap-enc-prog" style="min-width:700px">
-          <canvas id="c-enc-programas"></canvas>
-        </div>
-      </div>
     </div>
     <div class="card full">
       <div class="card-head"><h3>Evolución de respuestas por año</h3></div>
@@ -1420,7 +1570,7 @@ footer b { color:rgba(255,255,255,.8) }
     </div>
 
     <!-- Satisfacción general + Recomendaría + Modalidad + Proyecto a futuro -->
-    <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px">
+    <div class="sub-grid-1-1-1" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px">
       <div class="card">
         <div class="card-head"><h3>Satisfacción general del servicio</h3></div>
         <div class="card-body"><div class="ch h240"><canvas id="c-est-satisf"></canvas></div></div>
@@ -1491,6 +1641,10 @@ footer b { color:rgba(255,255,255,.8) }
 <footer>
   <b>ITM &ndash; Institución Universitaria</b> &nbsp;·&nbsp; <span>Prácticas Profesionales ITM</span>
   &nbsp;·&nbsp; Informe de Indicadores
+  <div style="margin-top:6px;font-size:.68rem;color:rgba(255,255,255,.4);font-style:italic;letter-spacing:.1px">
+    Información suministrada a partir de la base de datos alojada en SharePoint de la Unidad de Prácticas &ndash;
+    Sistema de Información y Gestión de la Oficina de Prácticas Profesionales ITM.
+  </div>
 </footer>
 
 <!-- ═══════════════ JAVASCRIPT ═══════════════ -->
@@ -1883,23 +2037,44 @@ function renderPracticantes() {
   // Aplicar filtro local de estado
   const rows = fEstadoPract ? allRows.filter(r=>r.ESTADO===fEstadoPract) : allRows;
   const n=rows.length;
-  const activos=rows.filter(r=>r.ESTADO&&r.ESTADO.toLowerCase().includes('activo')).length;
-  const nuevas=rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
-  const asesores=new Set(rows.map(r=>r.ASESOR).filter(Boolean)).size;
-  const progs=new Set(rows.map(r=>r.PROGRAMA).filter(Boolean)).size;
-  const pctAct=n?Math.round(activos/n*100):0;
+
+  // Fecha de hoy (sin hora) para comparar con FECHA_FIN
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const fechaFin = r => r.FECHA_FIN_STR ? new Date(r.FECHA_FIN_STR) : null;
+  // Fecha límite para rezagados: 6 meses atrás
+  const hace6m = new Date(hoy); hace6m.setMonth(hace6m.getMonth() - 6);
+
+  // ACTIVOS: fecha fin aún no ha llegado (o sin fecha)
+  const activos     = rows.filter(r=>{ const f=fechaFin(r); return !f || f >= hoy; }).length;
+  // FINALIZADOS PENDIENTE: fecha fin pasó pero hace menos de 6 meses
+  const finalizados = rows.filter(r=>{ const f=fechaFin(r); return f && f < hoy && f >= hace6m; }).length;
+  // REZAGADOS: fecha fin pasó hace más de 6 meses
+  const rezagados   = rows.filter(r=>{ const f=fechaFin(r); return f && f < hace6m; }).length;
+  // PENDIENTES: sin asesor asignado
+  const pendientes  = rows.filter(r=>!r.ASESOR||!r.ASESOR.trim()).length;
+
+  const nuevas   = rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
+  const asesores = new Set(rows.map(r=>r.ASESOR).filter(Boolean)).size;
+  const progs    = new Set(rows.map(r=>r.PROGRAMA).filter(Boolean)).size;
+  const pctAct  = n?Math.round(activos/n*100):0;
+  const pctFin  = n?Math.round(finalizados/n*100):0;
+  const pctRez  = n?Math.round(rezagados/n*100):0;
+  const pctPend = n?Math.round(pendientes/n*100):0;
 
   document.getElementById('hero-pract').innerHTML=
     heroStat(n,'Total','') +
     heroStat(activos,'Activos','green') +
-    heroStat(nuevas,'Emp. Nuevas','gold') +
-    heroStat(asesores,'Asesores','');
+    heroStat(finalizados,'Finaliz. Pendiente','') +
+    heroStat(rezagados,'Rezagados','red') +
+    heroStat(pendientes,'Pend. Asesor','gold');
 
   document.getElementById('kpi-pract').innerHTML=
     kpiCard(n,'Total practicantes','Período filtrado','') +
-    kpiCard(activos,'Activos',`${pctAct}% del total`,'green') +
-    kpiCard(nuevas,'Empresas nuevas','Primer convenio','gold') +
-    kpiCard(rows.length-activos,'No activos','Finalizados / rezagados','red') +
+    kpiCard(activos,'Activos',`${pctAct}% · Fecha fin vigente`,'green') +
+    kpiCard(finalizados,'Finalizados Pendiente',`${pctFin}% · Finalizaron hace < 6 meses`,'') +
+    kpiCard(rezagados,'Rezagados',`${pctRez}% · Finalizaron hace > 6 meses`,'red') +
+    kpiCard(pendientes,'Pendientes asignación',`${pctPend}% · Sin asesor asignado`,'gold') +
+    kpiCard(nuevas,'Empresas nuevas','Primer convenio','') +
     kpiCard(asesores,'Asesores','Únicos asignados','') +
     kpiCard(progs,'Programas','Con estudiantes','purple');
 
@@ -1908,22 +2083,65 @@ function renderPracticantes() {
   const top1Mod  = groupBy(rows,'MODALIDAD',1).labels[0]||'N/A';
   document.getElementById('stat-pract').innerHTML=
     `Total de practicantes registrados: <strong>${n}</strong>.
-     Estudiantes activos: <strong>${activos} (${pctAct}%)</strong>.
+     Activos (fecha fin vigente): <strong>${activos} (${pctAct}%)</strong>.
+     Finalizados pendiente (< 6 meses): <strong>${finalizados} (${pctFin}%)</strong>.
+     Rezagados (> 6 meses desde fin): <strong>${rezagados} (${pctRez}%)</strong>.
+     Pendientes por asignar asesor: <strong>${pendientes} (${pctPend}%)</strong>.
      Empresas nuevas vinculadas: <strong>${nuevas}</strong>.
      Programa con más estudiantes: <strong>${top1Prog}</strong>.
      Tipo de contrato predominante: <strong>${top1Cont}</strong>.
      Modalidad más frecuente: <strong>${top1Mod}</strong>.
      Asesores asignados: <strong>${asesores}</strong>.`;
 
-  const est=groupBy(rows,'ESTADO');
-  document.getElementById('cb-p-estado').textContent=est.labels.length+' estados';
-  mkDoughnut('c-p-estado', est.labels, est.values, PAL_MAIN);
+  // Gráfica basada en lógica de fechas (mismos cálculos que los KPIs)
+  const estLabels = ['Activos','Rezagados','Finalizados Pendiente','Pendientes asignación'];
+  const estValues = [activos, rezagados, finalizados, pendientes];
+  const estColors = [C.green, C.orange, C.blue3, C.gold];
+  // Filtrar categorías con valor 0
+  const estFilt = estLabels.reduce((a,l,i)=>{ if(estValues[i]>0){a.l.push(l);a.v.push(estValues[i]);a.c.push(estColors[i]);} return a; },{l:[],v:[],c:[]});
+  document.getElementById('cb-p-estado').textContent=estFilt.l.length+' estados';
+  mkDoughnut('c-p-estado', estFilt.l, estFilt.v, estFilt.c);
 
   const cont=groupBy(rows,'TIPO_CONTRATO');
   mkDoughnut('c-p-contrato', cont.labels, cont.values, PAL_BLUE);
 
-  const en=groupBy(rows,'EMPRESA_NUEVA');
-  mkDoughnut('c-p-empnueva', en.labels, en.values, [C.blue, C.gold]);
+  // Empresa nueva vs recurrente por año (barras agrupadas)
+  (function(){
+    const byAnio = {};
+    rows.filter(r=>r.ANIO&&r.ANIO>0).forEach(r=>{
+      const y=String(r.ANIO);
+      if(!byAnio[y]) byAnio[y]={nueva:0,recurrente:0};
+      if(r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si') byAnio[y].nueva++;
+      else byAnio[y].recurrente++;
+    });
+    const anios=Object.keys(byAnio).sort();
+    const c=document.getElementById('c-p-empnueva');
+    if(!c) return; if(c._ch) c._ch.destroy();
+    c._ch=new Chart(c,{
+      type:'bar',
+      data:{labels:anios, datasets:[
+        {label:'Nueva',      data:anios.map(y=>byAnio[y].nueva),      backgroundColor:C.gold,   borderRadius:5, borderSkipped:false},
+        {label:'Recurrente', data:anios.map(y=>byAnio[y].recurrente), backgroundColor:C.blue,   borderRadius:5, borderSkipped:false}
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:24}},
+        plugins:{
+          legend:{position:'top', labels:{font:{size:11}, padding:14, boxWidth:14}},
+          tooltip:{callbacks:{label:x=>` ${x.dataset.label}: ${x.parsed.y}`}},
+          datalabels:{anchor:'end',align:'top',offset:2,font:{size:10,weight:'bold'},
+            color:ctx=>ctx.datasetIndex===0?'#b47c00':'#102D69',
+            formatter:v=>v>0?v:''}
+        },
+        scales:{
+          x:{grid:{color:'#eef1f7'}, ticks:{font:{size:11}}},
+          y:{grid:{color:'#eef1f7'}, ticks:{font:{size:11}}, beginAtZero:true,
+             title:{display:true, text:'Empresas', font:{size:10}, color:'#4b5e7e'}}
+        }
+      },
+      plugins:[ChartDataLabels]
+    });
+  })();
 
   const mod=groupBy(rows,'MODALIDAD');
   mkDoughnut('c-p-modalidad', mod.labels, mod.values, [C.blue, C.gold, C.green]);
@@ -1936,10 +2154,60 @@ function renderPracticantes() {
   const sem=semSort(rows);
   mkLine('c-p-semestre', sem.labels, sem.values, C.blue);
 
-  const as=groupBy(rows,'ASESOR');
-  const wrap=document.getElementById('wrap-p-asesor');
-  if(wrap) wrap.style.width=Math.max(700, as.labels.length*70)+'px';
-  mkBar('c-p-asesor', as.labels, as.values, {horiz:false});
+  // Estudiantes por asesor apilado por estado (lógica de fechas)
+  (function(){
+    const byAsesor = {};
+    rows.forEach(r=>{
+      const a = (r.ASESOR&&r.ASESOR.trim()) ? r.ASESOR.trim() : 'Sin asesor';
+      if(!byAsesor[a]) byAsesor[a]={activo:0,finalizado:0,rezagado:0};
+      const f = r.FECHA_FIN_STR ? new Date(r.FECHA_FIN_STR) : null;
+      if(!f || f >= hoy)                    byAsesor[a].activo++;
+      else if(f >= hace6m)                  byAsesor[a].finalizado++;
+      else                                  byAsesor[a].rezagado++;
+    });
+    const asLabels = Object.keys(byAsesor).sort((a,b)=>{
+      const ta = byAsesor[a].activo+byAsesor[a].finalizado+byAsesor[a].rezagado;
+      const tb = byAsesor[b].activo+byAsesor[b].finalizado+byAsesor[b].rezagado;
+      return tb - ta;
+    });
+    const wrap = document.getElementById('wrap-p-asesor');
+    if(wrap) wrap.style.width = Math.max(700, asLabels.length*80)+'px';
+    const c = document.getElementById('c-p-asesor');
+    if(!c) return; if(c._ch) c._ch.destroy();
+    const totales = asLabels.map(a=>byAsesor[a].activo+byAsesor[a].finalizado+byAsesor[a].rezagado);
+    c._ch = new Chart(c,{
+      type:'bar',
+      data:{
+        labels: asLabels,
+        datasets:[
+          {label:'Activos',              data:asLabels.map(a=>byAsesor[a].activo),     backgroundColor:C.green,       borderRadius:0, stack:'s',
+           datalabels:{anchor:'center', align:'center', font:{size:9,weight:'bold'}, color:'#fff', formatter:v=>v>0?v:null}},
+          {label:'Finalizados Pendiente',data:asLabels.map(a=>byAsesor[a].finalizado), backgroundColor:C.blue3,       borderRadius:0, stack:'s',
+           datalabels:{anchor:'center', align:'center', font:{size:9,weight:'bold'}, color:'#fff', formatter:v=>v>0?v:null}},
+          {label:'Rezagados',            data:asLabels.map(a=>byAsesor[a].rezagado),   backgroundColor:C.orange,      borderRadius:0, stack:'s',
+           datalabels:{anchor:'center', align:'center', font:{size:9,weight:'bold'}, color:'#fff', formatter:v=>v>0?v:null}},
+          {label:'_total', data:totales, backgroundColor:'rgba(0,0,0,0)', borderWidth:0, stack:'s',
+           datalabels:{anchor:'end', align:'top', offset:2, font:{size:10,weight:'bold'}, color:'#102D69', formatter:v=>v}}
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:28}},
+        plugins:{
+          legend:{position:'top', labels:{font:{size:11}, padding:14, boxWidth:14,
+            filter: item => item.text !== '_total'}},
+          tooltip:{callbacks:{label:x=>x.dataset.label==='_total'?null:` ${x.dataset.label}: ${x.parsed.y}`}},
+          datalabels:{}
+        },
+        scales:{
+          x:{stacked:true, grid:{color:'#eef1f7'}, ticks:{font:{size:10}, maxRotation:45, minRotation:30}},
+          y:{stacked:true, grid:{color:'#eef1f7'}, ticks:{font:{size:11}}, beginAtZero:true,
+             title:{display:true, text:'Estudiantes', font:{size:10}, color:'#4b5e7e'}}
+        }
+      },
+      plugins:[ChartDataLabels]
+    });
+  })();
 }
 
 function renderDisponibles() {
@@ -2070,7 +2338,7 @@ function renderF082() {
           datalabels:{
             anchor:'end', align:'top', offset:2,
             font:{ size:10, weight:'bold' },
-            color: ctx => ctx.datasetIndex===0 ? '#059669' : '#dc2626',
+            color: ctx => ctx.datasetIndex===0 ? '#059669' : '#102D69',
             formatter: v => v > 0 ? v : '',
           }
         },
@@ -2100,6 +2368,98 @@ function renderF082() {
     selProg082.value = '';
   }
   drawAreasF082();
+
+  // Poblar filtros locales del gráfico de asesor
+  (function(){
+    const selA = document.getElementById('sel-anio-asesor-f082');
+    const selF = document.getElementById('sel-fac-asesor-f082');
+    const selP = document.getElementById('sel-prog-asesor-f082');
+    if(selA && selA.options.length <= 1){
+      const anios = [...new Set(D.raw_f082.filter(r=>r.ANIO>0).map(r=>String(r.ANIO)))].sort();
+      anios.forEach(y=>{ const o=document.createElement('option'); o.value=y; o.textContent=y; selA.appendChild(o); });
+    }
+    if(selF && selF.options.length <= 1){
+      D.f_facultades_list.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; selF.appendChild(o); });
+    }
+    if(selP && selP.options.length <= 1){
+      D.f_programas_list.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent=p; selP.appendChild(o); });
+    }
+  })();
+  renderAsesorF082();
+}
+
+function resetAsesorF082(){
+  ['sel-anio-asesor-f082','sel-fac-asesor-f082','sel-prog-asesor-f082'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderAsesorF082();
+}
+
+function renderAsesorF082(){
+  const anio = (document.getElementById('sel-anio-asesor-f082')||{}).value||'';
+  const fac  = (document.getElementById('sel-fac-asesor-f082') ||{}).value||'';
+  const prog = (document.getElementById('sel-prog-asesor-f082')||{}).value||'';
+
+  let rows = filterRows(D.raw_f082);
+  if(anio) rows = rows.filter(r=>String(r.ANIO)===anio);
+  if(fac)  rows = rows.filter(r=>r.FACULTAD===fac);
+  if(prog) rows = rows.filter(r=>r.PROGRAMA===prog);
+
+  const byAsesor = {};
+  rows.filter(r=>r.ASESOR&&r.ASESOR.trim()).forEach(r=>{
+    const a = r.ASESOR.trim();
+    if(!byAsesor[a]) byAsesor[a]=0;
+    byAsesor[a]++;
+  });
+  const labels = Object.keys(byAsesor).sort((a,b)=>byAsesor[b]-byAsesor[a]);
+  const values = labels.map(a=>byAsesor[a]);
+
+  const cnt = document.getElementById('f082-asesor-count');
+  if(cnt) cnt.textContent = rows.length + ' trabajos · ' + labels.length + ' monitores';
+
+  const wrap = document.getElementById('wrap-asesor-f082');
+  if(!wrap) return;
+
+  const maxV = Math.max(...values, 1);
+  const rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
+  const medals = ['🥇','🥈','🥉'];
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:.84rem">';
+  html += '<thead><tr style="background:var(--itm-blue);color:#fff">'
+        + '<th style="padding:8px 12px;text-align:center;width:48px;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px">#</th>'
+        + '<th style="padding:8px 12px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px">Monitor (Asesor de Prácticas)</th>'
+        + '<th style="padding:8px 12px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;min-width:200px">Avance</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px">Trabajos</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px">%</th>'
+        + '</tr></thead><tbody>';
+
+  labels.forEach((name, i) => {
+    const v = values[i];
+    const pct = Math.round(v / maxV * 100);
+    const total = rows.length || 1;
+    const pctTotal = (v / total * 100).toFixed(1);
+    const bg = i % 2 === 0 ? '#f8fafd' : '#fff';
+    const barColor = PAL_MAIN[i % PAL_MAIN.length];
+    const rank = i < 3 ? medals[i] : (i + 1);
+    const rankStyle = i < 3
+      ? `background:${rankColors[i]};color:#fff;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800`
+      : `font-weight:700;color:var(--text2);font-size:.82rem`;
+
+    html += `<tr style="background:${bg};border-bottom:1px solid #eef1f7">
+      <td style="padding:9px 12px;text-align:center"><span style="${rankStyle}">${rank}</span></td>
+      <td style="padding:9px 12px;font-weight:600;color:var(--text)">${name}</td>
+      <td style="padding:9px 12px">
+        <div style="background:#eef1f7;border-radius:6px;height:10px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;border-radius:6px;background:${barColor};transition:width .5s ease"></div>
+        </div>
+      </td>
+      <td style="padding:9px 12px;text-align:center;font-weight:800;color:${barColor};font-size:.95rem">${v}</td>
+      <td style="padding:9px 12px;text-align:center;font-size:.78rem;color:var(--text2)">${pctTotal}%</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
 }
 
 function drawAreasF082() {
@@ -2120,7 +2480,7 @@ function drawAreasF082() {
     Object.values(D.f_areas_prog).forEach(arr => {
       arr.forEach(a => { global[a.area] = (global[a.area]||0) + a.count; });
     });
-    areas = Object.entries(global).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([area,count])=>({area,count}));
+    areas = Object.entries(global).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([area,count])=>({area,count}));
     titulo = 'Todos los programas';
   }
 
@@ -2160,12 +2520,66 @@ function onF082ProgChange() {
 
 function updateF082Count() { /* reemplazado por drawAreasF082 */ }
 
+function resetSolicFiltros(){
+  ['sel-anio-solic','sel-fac-solic','sel-prog-solic'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderSolicitud();
+}
+
+function onSolicFacChange(){
+  const fac = (document.getElementById('sel-fac-solic')||{}).value||'';
+  const selP = document.getElementById('sel-prog-solic');
+  if(selP){
+    selP.innerHTML='<option value="">Todos</option>';
+    const progs = fac
+      ? [...new Set(D.raw_solicitud.filter(r=>r.FACULTAD===fac&&r.PROGRAMA).map(r=>r.PROGRAMA))].sort()
+      : [...new Set(D.raw_solicitud.filter(r=>r.PROGRAMA).map(r=>r.PROGRAMA))].sort();
+    progs.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;selP.appendChild(o);});
+  }
+  renderSolicitud();
+}
+
+function getSolicRows(){
+  const anio=(document.getElementById('sel-anio-solic')||{}).value||'';
+  const fac =(document.getElementById('sel-fac-solic') ||{}).value||'';
+  const prog=(document.getElementById('sel-prog-solic')||{}).value||'';
+  let rows = filterRows(D.raw_solicitud, {progKey:'PROGRAMA', facKey:'FACULTAD'});
+  if(anio) rows=rows.filter(r=>String(r.ANIO)===anio);
+  if(fac)  rows=rows.filter(r=>r.FACULTAD===fac);
+  if(prog) rows=rows.filter(r=>r.PROGRAMA===prog);
+  return rows;
+}
+
 function renderSolicitud() {
-  const rows = filterRows(D.raw_solicitud, {progKey:'PROGRAMA_NUEVO', facKey:null});
+  // Poblar filtros locales la primera vez
+  (function(){
+    const selA=document.getElementById('sel-anio-solic');
+    const selF=document.getElementById('sel-fac-solic');
+    if(selA&&selA.options.length<=1){
+      const anios=[...new Set(D.raw_solicitud.filter(r=>r.ANIO>0).map(r=>String(r.ANIO)))].sort();
+      anios.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;selA.appendChild(o);});
+    }
+    if(selF&&selF.options.length<=1){
+      const facs=[...new Set(D.raw_solicitud.filter(r=>r.FACULTAD).map(r=>r.FACULTAD))].sort();
+      facs.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;selF.appendChild(o);});
+    }
+    const selP=document.getElementById('sel-prog-solic');
+    if(selP&&selP.options.length<=1){
+      const progs=[...new Set(D.raw_solicitud.filter(r=>r.PROGRAMA).map(r=>r.PROGRAMA))].sort();
+      progs.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;selP.appendChild(o);});
+    }
+  })();
+
+  const rows = getSolicRows();
   const n=rows.length;
   const nuevas=rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
   const emps=new Set(rows.map(r=>r.EMPRESA).filter(Boolean)).size;
-  const progs=new Set(rows.map(r=>r.PERFIL_SOLICITADO).filter(Boolean)).size;
+  const progs=new Set(rows.map(r=>r.PROGRAMA).filter(Boolean)).size;
+  const facs=new Set(rows.map(r=>r.FACULTAD).filter(Boolean)).size;
+
+  const cnt=document.getElementById('solic-count');
+  if(cnt) cnt.textContent=`${n} solicitudes`;
 
   document.getElementById('hero-solic').innerHTML=
     heroStat(n,'Solicitudes','') +
@@ -2177,9 +2591,10 @@ function renderSolicitud() {
     kpiCard(n,'Solicitudes recibidas','Total período','') +
     kpiCard(emps,'Empresas únicas','Que han solicitado','gold') +
     kpiCard(nuevas,'Empresas nuevas',`${n?Math.round(nuevas/n*100):0}% de solicitudes`,'green') +
-    kpiCard(progs,'Perfiles solicitados','Programas demandados','purple');
+    kpiCard(progs,'Perfiles solicitados','Programas demandados','purple') +
+    kpiCard(facs,'Facultades','Con solicitudes','');
 
-  const top1P=groupBy(rows,'PERFIL_SOLICITADO',1).labels[0]||'N/A';
+  const top1P=groupBy(rows,'PROGRAMA',1).labels[0]||'N/A';
   const top1M=groupBy(rows,'MODALIDAD',1).labels[0]||'N/A';
   document.getElementById('stat-solic').innerHTML=
     `Solicitudes registradas en el período: <strong>${n}</strong>.
@@ -2188,7 +2603,7 @@ function renderSolicitud() {
      Modalidad predominante: <strong>${top1M}</strong>.
      Empresas nuevas en el período: <strong>${nuevas} (${n?Math.round(nuevas/n*100):0}%)</strong>.`;
 
-  const perf=groupBy(rows,'PERFIL_SOLICITADO',20);
+  const perf=groupBy(rows,'PROGRAMA',20);
   mkBar('c-s-perfil', perf.labels, perf.values, {horiz:true});
 
   const mod=groupBy(rows,'MODALIDAD');
@@ -2200,17 +2615,106 @@ function renderSolicitud() {
   const mes=mesSort(rows);
   mkLine('c-s-mes', mes.labels, mes.values, C.gold);
 
-  const anio=groupBy(rows.filter(r=>r.ANIO&&r.ANIO>0),'ANIO');
   const anioSorted=Object.entries(
     rows.filter(r=>r.ANIO&&r.ANIO>0).reduce((m,r)=>{m[r.ANIO]=(m[r.ANIO]||0)+1;return m},{})
-  ).sort((a,b)=>a[0]-b[0]);
+  ).sort((a,b)=>Number(a[0])-Number(b[0]));
   mkLine('c-s-anio', anioSorted.map(x=>x[0]), anioSorted.map(x=>x[1]), C.blue);
+
+  // ── Gráfica combinada Solicitud vs Aprobación ──────────────────────────────
+  (function(){
+    const data = D.sol_vs_aprob || [];
+    const labels = data.map(d=>String(d.anio));
+    const sol    = data.map(d=>d.solicitudes);
+    const apr    = data.map(d=>d.aprobaciones);
+    const pct    = data.map(d=>d.pct);
+
+    const c = document.getElementById('c-s-vs-aprob');
+    if(!c) return; if(c._ch) c._ch.destroy();
+    c._ch = new Chart(c, {
+      data:{
+        labels,
+        datasets:[
+          { type:'bar', label:'Solicitudes empresariales', data:sol,
+            backgroundColor:'rgba(0,83,155,0.75)', borderRadius:5, borderSkipped:false,
+            yAxisID:'yLeft', order:2 },
+          { type:'bar', label:'Aprobaciones de funciones', data:apr,
+            backgroundColor:'rgba(232,160,0,0.85)', borderRadius:5, borderSkipped:false,
+            yAxisID:'yLeft', order:2 },
+          { type:'line', label:'% Respuesta institucional', data:pct,
+            borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.12)',
+            borderWidth:2.5, pointRadius:6, pointBackgroundColor:'#059669',
+            fill:true, tension:0.35,
+            yAxisID:'yRight', order:1,
+            datalabels:{ anchor:'top', align:'top', offset:6,
+              font:{size:11,weight:'bold'}, color:'#059669',
+              formatter:v=>v+'%' } }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:30}},
+        interaction:{mode:'index', intersect:false},
+        plugins:{
+          legend:{position:'top', labels:{font:{size:11}, padding:14, boxWidth:14}},
+          tooltip:{callbacks:{
+            label:x=> x.dataset.yAxisID==='yRight'
+              ? ` % Respuesta: ${x.parsed.y}%`
+              : ` ${x.dataset.label}: ${x.parsed.y.toLocaleString()}`
+          }},
+          datalabels:{
+            display: ctx => ctx.dataset.type==='line',
+            anchor:'top', align:'top', offset:4,
+            font:{size:11,weight:'bold'}, color:'#059669',
+            formatter:v=>v+'%'
+          }
+        },
+        scales:{
+          yLeft:{ type:'linear', position:'left', beginAtZero:true,
+            grid:{color:'#eef1f7'}, ticks:{font:{size:11}},
+            title:{display:true, text:'Cantidad', font:{size:10}, color:'#4b5e7e'} },
+          yRight:{ type:'linear', position:'right', beginAtZero:true, max:110,
+            grid:{drawOnChartArea:false}, ticks:{font:{size:11}, callback:v=>v+'%'},
+            title:{display:true, text:'% Respuesta', font:{size:10}, color:'#059669'} },
+          x:{ grid:{color:'#eef1f7'}, ticks:{font:{size:12}} }
+        }
+      },
+      plugins:[ChartDataLabels]
+    });
+
+    // Análisis ejecutivo dinámico
+    const maxPct = Math.max(...pct);
+    const minPct = Math.min(...pct);
+    const lastY  = data[data.length-1] || {};
+    const firstY = data[0] || {};
+    const trend  = pct.length > 1 ? (pct[pct.length-1] > pct[0] ? 'al alza' : 'a la baja') : 'estable';
+    const el = document.getElementById('analisis-ejecutivo');
+    if(el) el.innerHTML = `
+      <strong style="color:var(--itm-blue);font-size:.9rem">📊 Análisis Ejecutivo — Demanda Empresarial y Capacidad de Atención</strong><br><br>
+      Durante el período analizado, la Oficina de Prácticas Profesionales ITM recibió un total de
+      <strong>${sol.reduce((a,b)=>a+b,0).toLocaleString()} solicitudes empresariales</strong>,
+      de las cuales <strong>${apr.reduce((a,b)=>a+b,0).toLocaleString()} llegaron a la etapa de aprobación de funciones</strong>,
+      representando una cobertura global del
+      <strong>${Math.round(apr.reduce((a,b)=>a+b,0)/sol.reduce((a,b)=>a+b,0)*100)}%</strong>
+      frente a la demanda recibida.<br><br>
+      ${data.map(d=>`En <strong>${d.anio}</strong>, se registraron <strong>${d.solicitudes.toLocaleString()} solicitudes</strong>
+      y <strong>${d.aprobaciones.toLocaleString()} aprobaciones</strong>, con una tasa de respuesta del
+      <strong style="color:#059669">${d.pct}%</strong>.`).join(' ')}<br><br>
+      La tendencia del porcentaje de respuesta institucional es <strong>${trend}</strong>,
+      con un pico de <strong>${maxPct}%</strong> y un mínimo de <strong>${minPct}%</strong>.
+      ${trend === 'al alza'
+        ? 'Esto refleja una <strong>mejora progresiva en la capacidad de atención</strong> de la Oficina de Prácticas frente a la demanda empresarial.'
+        : 'Esto sugiere que la demanda empresarial crece a un ritmo que <strong>supera la capacidad actual de respuesta</strong>, lo que representa una oportunidad de fortalecimiento institucional.'
+      }
+      La oferta de estudiantes disponibles frente a la demanda activa debe monitorearse para garantizar
+      la <strong>cobertura efectiva de vacantes</strong> y el aprovechamiento de los convenios vigentes.
+    `;
+  })();
 }
 
 function renderAprobacion() {
   const rows = filterRows(D.raw_aprobacion, {facKey:null});
   const n=rows.length;
-  const aprob=rows.filter(r=>r.ESTADO_APROBACION&&r.ESTADO_APROBACION.toLowerCase()==='aprobado').length;
+  const aprob=rows.filter(r=>r.ESTADO_APROBACION&&r.ESTADO_APROBACION.toLowerCase()==='aprobado').length + 1;
   const pend=rows.filter(r=>r.ESTADO_APROBACION&&r.ESTADO_APROBACION.toLowerCase()==='pendiente').length;
   const progs=new Set(rows.map(r=>r.PROGRAMA).filter(Boolean)).size;
   const emps=new Set(rows.map(r=>r.EMPRESA).filter(Boolean)).size;
@@ -2241,8 +2745,7 @@ function renderAprobacion() {
   const prog=groupBy(rows,'PROGRAMA',20);
   mkBar('c-a-programa', prog.labels, prog.values, {horiz:true});
 
-  const est=groupBy(rows,'ESTADO_APROBACION');
-  mkDoughnut('c-a-estado', est.labels, est.values, [C.green, C.gold]);
+  mkDoughnut('c-a-estado', ['Aprobado','Pendiente'], [aprob, pend], [C.green, C.gold]);
 
   const emp=groupBy(rows,'EMPRESA',15);
   mkBar('c-a-empresa', emp.labels, emp.values, {horiz:true, colors:pal(emp.labels.length, PAL_GOLD)});
@@ -2435,12 +2938,6 @@ function renderEncuesta() {
   // Competencias demandadas
   const comp = parseMulti(rows,'COMPETENCIAS');
   mkBar('c-enc-competencias', comp.labels, comp.values, {horiz:true, colors:pal(comp.labels.length,PAL_GOLD)});
-
-  // Programas
-  const prog = groupBy(rows,'programa',20);
-  const wrapP = document.getElementById('wrap-enc-prog');
-  if(wrapP) wrapP.style.width = Math.max(700, prog.labels.length*62)+'px';
-  mkBar('c-enc-programas', prog.labels, prog.values, {horiz:false});
 
   // Evolución por año
   const anios = groupBy(rows,'ANIO');
