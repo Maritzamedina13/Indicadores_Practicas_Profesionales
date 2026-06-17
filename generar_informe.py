@@ -4189,9 +4189,17 @@ document.addEventListener('DOMContentLoaded', init);
     slides[cueeIdx].classList.add('active');
     thumbs[cueeIdx]?.classList.add('active');
     dots[cueeIdx]?.classList.add('active');
-    // scroll thumb visible
+    // scroll thumb visible dentro del contenedor (sin afectar el scroll de la página)
     const tw = document.getElementById('cuee-thumbs');
-    if(tw && thumbs[cueeIdx]) thumbs[cueeIdx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    if(tw && thumbs[cueeIdx]) {
+      const thumb = thumbs[cueeIdx];
+      const twLeft = tw.scrollLeft;
+      const twW = tw.offsetWidth;
+      const tLeft = thumb.offsetLeft;
+      const tW = thumb.offsetWidth;
+      if(tLeft < twLeft) tw.scrollLeft = tLeft - 8;
+      else if(tLeft + tW > twLeft + twW) tw.scrollLeft = tLeft + tW - twW + 8;
+    }
     cueeAutoplay();
   };
 
