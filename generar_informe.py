@@ -2051,7 +2051,7 @@ function renderPracticantes() {
   // REZAGADOS: fecha fin pasó hace más de 6 meses
   const rezagados   = rows.filter(r=>{ const f=fechaFin(r); return f && f < hace6m; }).length;
   // PENDIENTES: sin asesor asignado
-  const pendientes  = rows.filter(r=>!r.ASESOR||!r.ASESOR.trim()).length;
+  const pendientes  = rows.filter(r=>{ const f=fechaFin(r); return (!r.ASESOR||!r.ASESOR.trim()) && !(f && f < hace6m); }).length;
 
   const nuevas   = rows.filter(r=>r.EMPRESA_NUEVA&&r.EMPRESA_NUEVA.toLowerCase()==='si').length;
   const asesores = new Set(rows.map(r=>r.ASESOR).filter(Boolean)).size;
@@ -2174,7 +2174,10 @@ function renderPracticantes() {
     if(wrap) wrap.style.width = Math.max(700, asLabels.length*80)+'px';
     const c = document.getElementById('c-p-asesor');
     if(!c) return; if(c._ch) c._ch.destroy();
+    const META_ASESOR = 35;
     const totales = asLabels.map(a=>byAsesor[a].activo+byAsesor[a].finalizado+byAsesor[a].rezagado);
+    const pcts = totales.map(t=>Math.round(t/META_ASESOR*100));
+    const metaLine = asLabels.map(()=>META_ASESOR);
     c._ch = new Chart(c,{
       type:'bar',
       data:{
@@ -2187,16 +2190,28 @@ function renderPracticantes() {
           {label:'Rezagados',            data:asLabels.map(a=>byAsesor[a].rezagado),   backgroundColor:C.orange,      borderRadius:0, stack:'s',
            datalabels:{anchor:'center', align:'center', font:{size:9,weight:'bold'}, color:'#fff', formatter:v=>v>0?v:null}},
           {label:'_total', data:totales, backgroundColor:'rgba(0,0,0,0)', borderWidth:0, stack:'s',
-           datalabels:{anchor:'end', align:'top', offset:2, font:{size:10,weight:'bold'}, color:'#102D69', formatter:v=>v}}
+           datalabels:{anchor:'end', align:'top', offset:2, font:{size:10,weight:'bold'}, color:'#102D69',
+             formatter:(v,ctx)=>{const p=pcts[ctx.dataIndex]; return v+' ('+p+'%)'}}},
+          {label:'Meta (35)', data:metaLine, type:'line', borderColor:'#e74c3c', borderWidth:2,
+           borderDash:[5,4], pointRadius:0, fill:false, stack:undefined,
+           datalabels:{display:false}}
         ]
       },
       options:{
         responsive:true, maintainAspectRatio:false,
-        layout:{padding:{top:28}},
+        layout:{padding:{top:32}},
         plugins:{
           legend:{position:'top', labels:{font:{size:11}, padding:14, boxWidth:14,
             filter: item => item.text !== '_total'}},
-          tooltip:{callbacks:{label:x=>x.dataset.label==='_total'?null:` ${x.dataset.label}: ${x.parsed.y}`}},
+          tooltip:{callbacks:{label:x=>{
+            if(x.dataset.label==='_total') return null;
+            if(x.dataset.label==='Meta (35)') return ` Meta: ${META_ASESOR} estudiantes`;
+            return ` ${x.dataset.label}: ${x.parsed.y}`;
+          }, afterBody:(items)=>{
+            const i=items[0]?.dataIndex;
+            if(i==null) return [];
+            return [`Cumplimiento: ${pcts[i]}% de meta (${META_ASESOR} est.)`];
+          }}},
           datalabels:{}
         },
         scales:{
@@ -2421,9 +2436,6 @@ function renderAsesorF082(){
   if(!wrap) return;
 
   const maxV = Math.max(...values, 1);
-  const rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
-  const medals = ['🥇','🥈','🥉'];
-
   let html = '<table style="width:100%;border-collapse:collapse;font-size:.84rem">';
   html += '<thead><tr style="background:var(--itm-blue);color:#fff">'
         + '<th style="padding:8px 12px;text-align:center;width:48px;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px">#</th>'
@@ -2440,10 +2452,8 @@ function renderAsesorF082(){
     const pctTotal = (v / total * 100).toFixed(1);
     const bg = i % 2 === 0 ? '#f8fafd' : '#fff';
     const barColor = PAL_MAIN[i % PAL_MAIN.length];
-    const rank = i < 3 ? medals[i] : (i + 1);
-    const rankStyle = i < 3
-      ? `background:${rankColors[i]};color:#fff;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800`
-      : `font-weight:700;color:var(--text2);font-size:.82rem`;
+    const rank = i + 1;
+    const rankStyle = `font-weight:700;color:var(--itm-blue);font-size:.85rem`;
 
     html += `<tr style="background:${bg};border-bottom:1px solid #eef1f7">
       <td style="padding:9px 12px;text-align:center"><span style="${rankStyle}">${rank}</span></td>
