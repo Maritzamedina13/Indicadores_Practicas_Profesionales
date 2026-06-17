@@ -532,6 +532,76 @@ def build_data(df1, df2, df3, df4, df5, df6, df7):
 
 # ─── Logo ──────────────────────────────────────────────────────────────────────
 
+def build_cuee_carousel():
+    """Genera el HTML del carrusel con las fotos del CUEE embebidas en base64."""
+    fotos = [
+        ('DOCUMENTACION/fotos_cuee/word/media/image1.jpeg',  'Convocatoria Pasantías CUEE 2026',    'Campaña oficial · ¡La experiencia laboral ya comenzó!'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image2.jpeg',  'Inducción de Estudiantes',             'Sesión de inducción previa a la asignación de empresas'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image4.jpeg',  'Foto Grupal · Empresa Aliada',         'Estudiantes ITM en instalaciones de empresa del sector productivo'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image6.jpeg',  'Metro de Medellín',                    'Visita a instalaciones del Metro · #MiMetroMeMueve'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image8.jpeg',  'Visita a Planta de Producción',        'Estudiantes equipados para recorrido por planta de producción'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image10.jpeg', 'Sesión Empresarial · Día 1',           'Charla y presentación en empresa aliada · Línea Directa'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image12.jpeg', 'Colcafé · Espacio de Bienestar',       'Estudiantes ITM en instalaciones de Colcafé'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image14.jpeg', 'Protección S.A.',                      'Estudiantes en instalaciones de Protección · Grupo SURA'),
+        ('DOCUMENTACION/fotos_cuee/word/media/image16.jpeg', 'Noel · Planta de Producción',          'Estudiantes con trajes de bioseguridad en Compañía de Galletas Noel'),
+    ]
+    slides_html = ''
+    thumbs_html = ''
+    loaded = 0
+    for i, (path, titulo, desc) in enumerate(fotos):
+        try:
+            with open(path, 'rb') as f:
+                b64 = base64.b64encode(f.read()).decode()
+            src = f'data:image/jpeg;base64,{b64}'
+            active = 'active' if i == 0 else ''
+            slides_html += f'''
+      <div class="cuee-slide {active}" data-index="{i}">
+        <img src="{src}" alt="{titulo}" loading="lazy">
+        <div class="cuee-caption">
+          <div class="cuee-caption-title">{titulo}</div>
+          <div class="cuee-caption-desc">{desc}</div>
+        </div>
+      </div>'''
+            thumbs_html += f'''
+        <div class="cuee-thumb {active}" data-index="{i}" onclick="cueeGoTo({i})">
+          <img src="{src}" alt="{titulo}">
+        </div>'''
+            loaded += 1
+        except Exception:
+            pass
+    if loaded == 0:
+        return ''
+    return f'''
+<div class="card full" id="cuee-carousel-card">
+  <div class="card-head">
+    <h3>Galería Fotográfica · Pasantías CUEE 2026-1</h3>
+    <span class="card-badge">{loaded} fotos · Mayo 2026</span>
+  </div>
+  <div class="card-body" style="padding-bottom:20px">
+    <div class="sub-grid-1-1" style="display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start">
+      <!-- Carrusel -->
+      <div>
+        <div class="cuee-carousel">
+          <div class="cuee-track">{slides_html}
+          </div>
+          <button class="cuee-btn cuee-prev" onclick="cueeMove(-1)" aria-label="Anterior">&#8249;</button>
+          <button class="cuee-btn cuee-next" onclick="cueeMove(1)" aria-label="Siguiente">&#8250;</button>
+          <div class="cuee-dots" id="cuee-dots"></div>
+        </div>
+        <div class="cuee-thumbs" id="cuee-thumbs">{thumbs_html}
+        </div>
+      </div>
+      <!-- Empresas Aliadas -->
+      <div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--text2,#475569);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border,#e2e8f0)">
+          🏢 Empresas Aliadas · Sector productivo Antioquia
+        </div>
+        <div id="cuee-empresas-grid" style="display:grid;grid-template-columns:1fr;gap:9px"></div>
+      </div>
+    </div>
+  </div>
+</div>'''
+
 def get_logo():
     for path in ['DOCUMENTACION/LOGO ITM 2020-02.png', 'DOCUMENTACION/LOGO ITM 2020-03.png']:
         try:
@@ -1032,6 +1102,72 @@ footer b { color:rgba(255,255,255,.8) }
 /* ── WORD CLOUD CANVAS ───────────────────────── */
 #wc-canvas-f082 { display:block; max-height:420px }
 
+/* ── CARRUSEL CUEE ───────────────────────────── */
+.cuee-carousel {
+  position:relative; overflow:hidden; border-radius:10px;
+  background:#000; aspect-ratio:16/7; max-height:440px;
+}
+.cuee-track { display:flex; height:100%; transition:none }
+.cuee-slide {
+  min-width:100%; height:100%; position:relative;
+  display:none; align-items:center; justify-content:center;
+  background:#0f172a;
+}
+.cuee-slide.active { display:flex }
+.cuee-slide img {
+  width:100%; height:100%; object-fit:contain;
+  display:block; border-radius:10px; background:#0f172a;
+}
+.cuee-caption {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.75) 0%,rgba(0,0,0,0) 100%);
+  padding:28px 20px 16px; border-radius:0 0 10px 10px;
+  color:#fff;
+}
+.cuee-caption-title { font-size:.88rem; font-weight:700; margin-bottom:3px }
+.cuee-caption-desc  { font-size:.74rem; opacity:.82 }
+.cuee-btn {
+  position:absolute; top:50%; transform:translateY(-50%);
+  background:rgba(255,255,255,.18); border:none; color:#fff;
+  font-size:2rem; line-height:1; width:42px; height:42px;
+  border-radius:50%; cursor:pointer; backdrop-filter:blur(4px);
+  transition:.2s; display:flex; align-items:center; justify-content:center;
+}
+.cuee-btn:hover { background:rgba(255,255,255,.36) }
+.cuee-prev { left:12px }
+.cuee-next { right:12px }
+.cuee-dots {
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  display:flex; gap:6px;
+}
+.cuee-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:rgba(255,255,255,.45); cursor:pointer; transition:.2s;
+}
+.cuee-dot.active { background:#fff; transform:scale(1.25) }
+.cuee-thumbs {
+  display:flex; gap:8px; margin-top:10px;
+  overflow-x:auto; padding-bottom:4px;
+  scrollbar-width:thin; scrollbar-color:#d1d5db transparent;
+}
+.cuee-thumb {
+  flex-shrink:0; width:80px; height:54px; border-radius:7px;
+  overflow:hidden; cursor:pointer; border:2px solid transparent;
+  transition:.2s; opacity:.6;
+}
+.cuee-thumb:hover { opacity:.85 }
+.cuee-thumb.active { border-color:var(--itm,#102D69); opacity:1 }
+.cuee-thumb img { width:100%; height:100%; object-fit:cover; display:block }
+@media(max-width:768px){
+  .cuee-carousel { aspect-ratio:16/9; max-height:280px }
+  .cuee-thumb { width:60px; height:40px }
+  .cuee-btn { width:34px; height:34px; font-size:1.4rem }
+}
+@media(max-width:480px){
+  .cuee-caption-title { font-size:.78rem }
+  .cuee-caption-desc  { display:none }
+}
+
 /* ── PRINT / PDF ─────────────────────────────── */
 @media print {
   header, .filter-bar, .btn-pdf, nav { display:none !important }
@@ -1085,6 +1221,12 @@ footer b { color:rgba(255,255,255,.8) }
     </button>
     <button class="nav-btn" onclick="goTo('encuesta-est',this)">
       <span class="dot"></span>🎓 Encuesta Estudiantes
+    </button>
+    <button class="nav-btn" onclick="goTo('cuee',this)">
+      <span class="dot"></span>🤝 CUEE
+    </button>
+    <button class="nav-btn" onclick="goTo('historicos',this)">
+      <span class="dot"></span>📊 Históricos
     </button>
   </nav>
 </header>
@@ -1634,6 +1776,346 @@ footer b { color:rgba(255,255,255,.8) }
     </div>
 
   </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN CUEE
+═══════════════════════════════════════════════════════ -->
+<section id="sec-cuee" class="section">
+  <div class="sec-hero">
+    <div class="sec-hero-left">
+      <div class="sec-hero-icon">🤝</div>
+      <h2>Pasantías CUEE 2026-1</h2>
+      <p>Comité Universidad, Empresa y Estado — Articulación academia–sector productivo · Mayo 13–15 y 19–21 de 2026</p>
+    </div>
+    <div id="hero-cuee" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap"></div>
+  </div>
+
+  <div class="charts-grid">
+
+    __CUEE_CAROUSEL__
+
+    <!-- ── Fila A: Tasa conversión + Cifras generales (full, lado a lado) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Participación General 2026-1</h3><span class="card-badge">Tasa de conversión · Cifras clave</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center">
+
+          <!-- Barras horizontales de conversión -->
+          <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
+            <div style="font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px">Distribución de 319 inscritos</div>
+
+            <!-- Barra 1 -->
+            <div style="margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:.8rem;font-weight:700;color:#10b981">Participantes efectivos</span>
+                <span style="font-size:1.1rem;font-weight:900;color:#10b981">132 <span style="font-size:.72rem;font-weight:600;color:var(--text2)">(41.4%)</span></span>
+              </div>
+              <div style="background:#e2e8f0;border-radius:8px;height:18px;overflow:hidden">
+                <div style="background:linear-gradient(90deg,#10b981,#34d399);height:100%;width:41.4%;border-radius:8px;transition:width .8s ease"></div>
+              </div>
+            </div>
+
+            <!-- Barra 2 -->
+            <div style="margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:.8rem;font-weight:700;color:#f59e0b">Cupo no utilizado</span>
+                <span style="font-size:1.1rem;font-weight:900;color:#f59e0b">41 <span style="font-size:.72rem;font-weight:600;color:var(--text2)">(12.9%)</span></span>
+              </div>
+              <div style="background:#e2e8f0;border-radius:8px;height:18px;overflow:hidden">
+                <div style="background:linear-gradient(90deg,#f59e0b,#fbbf24);height:100%;width:12.9%;border-radius:8px;transition:width .8s ease"></div>
+              </div>
+            </div>
+
+            <!-- Barra 3 -->
+            <div style="margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:.8rem;font-weight:700;color:#2563eb">Sin cupo asignado</span>
+                <span style="font-size:1.1rem;font-weight:900;color:#2563eb">146 <span style="font-size:.72rem;font-weight:600;color:var(--text2)">(45.8%)</span></span>
+              </div>
+              <div style="background:#e2e8f0;border-radius:8px;height:18px;overflow:hidden">
+                <div style="background:linear-gradient(90deg,#3b82f6,#93c5fd);height:100%;width:45.8%;border-radius:8px;transition:width .8s ease"></div>
+              </div>
+            </div>
+
+            <!-- Tasa global destacada -->
+            <div style="background:linear-gradient(135deg,#102D69,#1a4a9c);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:16px;margin-top:4px">
+              <div style="text-align:center">
+                <div style="font-size:2rem;font-weight:900;color:#fff;line-height:1">41.4%</div>
+                <div style="font-size:.65rem;color:rgba(255,255,255,.7);font-weight:600">tasa de participación</div>
+              </div>
+              <div style="width:1px;height:44px;background:rgba(255,255,255,.2)"></div>
+              <div style="font-size:.75rem;color:rgba(255,255,255,.85);line-height:1.6">
+                De cada <b style="color:#fff">10 inscritos</b>,<br><b style="color:#34d399">4 participaron</b> efectivamente en las empresas aliadas.
+              </div>
+            </div>
+          </div>
+          <!-- canvas oculto requerido por el JS -->
+          <canvas id="c-cuee-conv" style="display:none"></canvas>
+
+          <!-- Barras generales -->
+          <div>
+            <div class="ch h260"><canvas id="c-cuee-total"></canvas></div>
+            <div style="display:flex;justify-content:center;gap:18px;margin-top:10px;font-size:.72rem;color:var(--text2)">
+              <span>📉 Inscrito→Cupo: <b style="color:#ef4444">45.8%</b> no avanzó</span>
+              <span>📉 Cupo→Asistencia: <b style="color:#f97316">23.7%</b> no asistió</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila B: Comparativo facultad + Doughnut + Tabla (full, 3 cols) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Distribución por Facultad</h3><span class="card-badge">Inscritos · Participantes · Conversión</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:2fr 180px 1fr;gap:20px;align-items:center">
+          <!-- Barras comparativo -->
+          <div class="ch h250"><canvas id="c-cuee-fac-comp"></canvas></div>
+          <!-- Doughnut -->
+          <div style="height:220px;position:relative"><canvas id="c-cuee-fac-pie"></canvas></div>
+          <!-- Tabla -->
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+            <thead>
+              <tr style="background:var(--itm,#102D69)">
+                <th style="padding:8px 10px;text-align:left;color:#fff;font-weight:600;font-size:.72rem;border-radius:6px 0 0 0">Facultad</th>
+                <th style="padding:8px 8px;text-align:center;color:#fff;font-weight:600;font-size:.72rem">Ins.</th>
+                <th style="padding:8px 8px;text-align:center;color:#fff;font-weight:600;font-size:.72rem">Part.</th>
+                <th style="padding:8px 8px;text-align:center;color:#fff;font-weight:600;font-size:.72rem;border-radius:0 6px 0 0">%</th>
+              </tr>
+            </thead>
+            <tbody id="cuee-fac-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila C: Asistentes por empresa (full) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Asistentes por Empresa</h3><span class="card-badge">8 empresas · 132 total</span></div>
+      <div class="card-body"><div class="ch h240"><canvas id="c-cuee-empresas"></canvas></div></div>
+    </div>
+
+    <!-- ── Fila D: Evaluación empresarios (full, 4 cols) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Evaluación de los Empresarios</h3><span class="card-badge">Escala 1–5 · Puntaje máximo en todos los criterios</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="cuee-ratings"></div>
+        <div style="margin-top:14px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;border-left:4px solid #10b981;padding:12px 16px">
+          <div style="font-size:.68rem;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Evaluación Global · 5.0 / 5.0</div>
+          <p style="font-size:.76rem;color:var(--text2);line-height:1.5">Los empresarios calificaron con <b>puntaje máximo en los cuatro criterios</b>. Refleja una percepción excelente del desempeño, actitud y disposición de los estudiantes ITM.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila E: Tendencias + Competencias (full, 2 cols) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Tendencias y Competencias del Sector Productivo</h3><span class="card-badge">Identificadas en Pasantías CUEE 2026-1</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+
+          <!-- Columna izquierda: Tendencias -->
+          <div style="padding:20px;background:#f8fafd;border-right:1px solid var(--border)">
+            <div style="font-size:.72rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+              <span style="background:#2563eb;color:#fff;border-radius:6px;padding:3px 8px;font-size:.65rem">💡 Tecnológicas</span>
+              Tendencias identificadas
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="cuee-tags-tech"></div>
+            <div style="margin-top:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;border-left:4px solid #2563eb;padding:12px 14px">
+              <div style="font-size:.67rem;font-weight:700;color:#1d4ed8;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Reto para el ITM</div>
+              <p style="font-size:.75rem;color:var(--text2);line-height:1.5;margin:0">Las empresas solicitan formación en <b>IA, análisis de datos y automatización</b>. Postobón manifestó interés en programas de capacitación interna.</p>
+            </div>
+          </div>
+
+          <!-- Columna derecha: Competencias -->
+          <div style="padding:20px;background:#fff">
+            <div style="font-size:.72rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+              <span style="background:#10b981;color:#fff;border-radius:6px;padding:3px 8px;font-size:.65rem">🎯 Perfil</span>
+              Competencias demandadas
+            </div>
+            <div style="font-size:.68rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:2px">Habilidades Técnicas</div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:16px" id="cuee-tags-tec"></div>
+            <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+            <div style="font-size:.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:2px">Power Skills</div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px" id="cuee-tags-soft"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila F: Oportunidades (3 cols) ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Oportunidades de Relacionamiento Identificadas</h3></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;padding:18px;border:1px solid #bfdbfe">
+            <div style="font-size:1.4rem;margin-bottom:8px">🔬</div>
+            <div style="font-weight:700;color:var(--itm);font-size:.84rem;margin-bottom:5px">Investigación & Extensión</div>
+            <div style="font-size:.75rem;color:var(--text2);line-height:1.6">Docentes identificaron oportunidades relacionales e investigativas y la posibilidad de descentralizar aulas hacia las empresas.</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:18px;border:1px solid #bbf7d0">
+            <div style="font-size:1.4rem;margin-bottom:8px">📘</div>
+            <div style="font-weight:700;color:#166534;font-size:.84rem;margin-bottom:5px">Formación Empresarial</div>
+            <div style="font-size:.75rem;color:var(--text2);line-height:1.6">Postobón abrió ventana para capacitación de empleados en IA, análisis de datos y automatización. Contacto trasladado a extensión y facultad.</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#fefce8,#fef9c3);border-radius:10px;padding:18px;border:1px solid #fde68a">
+            <div style="font-size:1.4rem;margin-bottom:8px">🏫</div>
+            <div style="font-weight:700;color:#92400e;font-size:.84rem;margin-bottom:5px">Aulas Descentralizadas</div>
+            <div style="font-size:.75rem;color:var(--text2);line-height:1.6">Realizar ejercicios experienciales dentro de las empresas para llevar el aprendizaje directamente al entorno productivo real.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila G: Obs + Sugerencias + Conclusiones ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Conclusiones, Observaciones y Sugerencias</h3></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#fefce8;border-radius:10px;border:1px solid #fde68a;padding:15px 17px">
+            <div style="font-size:.71rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚠️ Observaciones</div>
+            <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
+              <li>Desconocimiento del alcance del CUEE dentro de la comunidad universitaria.</li>
+              <li>Deserción por temor a no conseguir alternativas de tiempo para actividades académicas.</li>
+              <li>Los resultados de relacionamiento no tienen continuidad por falta de compromiso institucional.</li>
+              <li>Se identifican talentos que deberían ser estimulados dentro de la institución.</li>
+            </ul>
+          </div>
+          <div style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;padding:15px 17px">
+            <div style="font-size:.71rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✅ Sugerencias</div>
+            <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
+              <li>Comunicación permanente y retroalimentación entre mentores, estudiantes y empresas.</li>
+              <li>Fortalecer la estructura del programa de mentoría.</li>
+              <li>Calendarios y notificaciones oportunas a las IES.</li>
+              <li>Generar la <b>Escuela de Talento y Formación CUEE</b>.</li>
+              <li>Entregar informe gerencial a las rectorías sobre el evento completo.</li>
+            </ul>
+          </div>
+          <div style="background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;padding:15px 17px;grid-column:1/-1">
+            <div style="font-size:.71rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📌 Conclusiones Generales</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+              <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
+                <li>Se logró establecer participación, ejecución y resultados en los objetivos propuestos.</li>
+                <li>Los estudiantes conectaron teoría académica con la realidad productiva de manera significativa.</li>
+              </ul>
+              <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
+                <li>Docentes y mentores deben documentar el observatorio para aportar a la academia sobre tendencias.</li>
+                <li>Se requiere plan de continuidad conjunto con las IES en lo académico y relacional.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Fila H: Voz de los estudiantes ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Voz de los Estudiantes</h3><span class="card-badge">Testimonios del programa</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="cuee-quotes"></div>
+      </div>
+    </div>
+
+  </div><!-- /charts-grid -->
+</section>
+
+<!-- ══════════════════════ HISTÓRICOS ══════════════════════ -->
+<section id="sec-historicos" class="section">
+  <div class="sec-hero">
+    <div class="sec-hero-left">
+      <div class="sec-hero-icon">📊</div>
+      <h2>Indicadores Históricos</h2>
+      <p>Evolución de los indicadores clave de Prácticas Profesionales ITM · 2024–2026</p>
+    </div>
+    <div id="hero-historicos" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap"></div>
+  </div>
+
+  <div class="charts-grid">
+
+    <!-- ── Fila 1: KPIs de resumen ── -->
+    <div class="card full" id="hist-kpi-card">
+      <div class="card-head"><h3>Resumen General del Período</h3><span class="card-badge">2024 · 2025 · 2026 (parcial)</span></div>
+      <div class="card-body">
+        <div id="hist-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px"></div>
+      </div>
+    </div>
+
+    <!-- ── Fila 2: Asistentes Preprácticas ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Asistentes Curso Preprácticas</h3><span class="card-badge">Evolución anual y por trimestre</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+          <div>
+            <div class="ch h260"><canvas id="c-hist-pre-anio"></canvas></div>
+          </div>
+          <div>
+            <div class="ch h260"><canvas id="c-hist-pre-trim"></canvas></div>
+          </div>
+        </div>
+        <div id="hist-analisis-pre" style="margin-top:16px;padding:14px 18px;background:#f0f4ff;border-left:4px solid var(--itm-blue);border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <!-- ── Fila 3: Estudiantes que iniciaron prácticas ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Estudiantes que Iniciaron Prácticas</h3><span class="card-badge">Registros por período</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+          <div>
+            <div class="ch h260"><canvas id="c-hist-inic-anio"></canvas></div>
+          </div>
+          <div>
+            <div class="ch h260"><canvas id="c-hist-inic-trim"></canvas></div>
+          </div>
+        </div>
+        <div id="hist-analisis-inic" style="margin-top:16px;padding:14px 18px;background:#f0fff4;border-left:4px solid #10b981;border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <!-- ── Fila 4: Graduados ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Graduados con Práctica</h3><span class="card-badge">Evolución anual y por trimestre</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+          <div>
+            <div class="ch h260"><canvas id="c-hist-grad-anio"></canvas></div>
+          </div>
+          <div>
+            <div class="ch h260"><canvas id="c-hist-grad-trim"></canvas></div>
+          </div>
+        </div>
+        <div id="hist-analisis-grad" style="margin-top:16px;padding:14px 18px;background:#fff8f0;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <!-- ── Fila 5: Vinculados ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Estudiantes Vinculados (Empresa)</h3><span class="card-badge">Contratos · Vinculaciones activas</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+          <div>
+            <div class="ch h240"><canvas id="c-hist-vinc-anio"></canvas></div>
+          </div>
+          <div>
+            <div class="ch h240"><canvas id="c-hist-vinc-trim"></canvas></div>
+          </div>
+        </div>
+        <div id="hist-analisis-vinc" style="margin-top:16px;padding:14px 18px;background:#f5f0ff;border-left:4px solid #8b5cf6;border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <!-- ── Fila 6: Comparativo integral ── -->
+    <div class="card full">
+      <div class="card-head"><h3>Comparativo Integral por Año</h3><span class="card-badge">Preprácticas · Iniciaron · Graduados · Vinculados</span></div>
+      <div class="card-body">
+        <div class="ch h300"><canvas id="c-hist-comp"></canvas></div>
+        <div id="hist-analisis-comp" style="margin-top:16px;padding:14px 18px;background:#f0f4ff;border-left:4px solid var(--itm-blue);border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
+      </div>
+    </div>
+
+  </div><!-- /charts-grid -->
 </section>
 
 </main>
@@ -3157,6 +3639,202 @@ function render(name) {
   else if(name==='aprobacion') renderAprobacion();
   else if(name==='encuesta') renderEncuesta();
   else if(name==='encuesta-est') renderEncuestaEst();
+  else if(name==='cuee') renderCuee();
+  else if(name==='historicos') renderHistoricos();
+}
+
+// ── CUEE ──────────────────────────────────────────────────────────────────────
+function renderCuee() {
+  // ── Datos estáticos 2026-1 ──
+  const INSCR=319, CUPOS=173, PARTIC=132, EMPRESAS=8;
+  const facLabels=['Ciencias Exactas','Ciencias Económicas','Ingeniería','Artes y Humanidades'];
+  const facIns=[21,88,57,5];
+  const facPar=[15,76,38,3];
+  const empData=[
+    {n:'Línea Directa',s:'Textil · Moda',v:27,icon:'👗',c:'#f59e0b'},
+    {n:'Metro Medellín',s:'Transporte Masivo',v:23,icon:'🚇',c:'#2563eb'},
+    {n:'Postobón',s:'Alimentos y Bebidas',v:20,icon:'🥤',c:'#ef4444'},
+    {n:'CEIBA Software',s:'Tecnología',v:16,icon:'💻',c:'#102D69'},
+    {n:'Noel',s:'Galletas · Grupo Nutresa',v:15,icon:'🍪',c:'#e67e22'},
+    {n:'Protección',s:'Finanzas · Pensiones',v:14,icon:'🛡️',c:'#10b981'},
+    {n:'Colcafé',s:'Café · Grupo Nutresa',v:9,icon:'☕',c:'#6d4c41'},
+    {n:'Prebel',s:'Cosmética · Belleza',v:8,icon:'💄',c:'#9b59b6'},
+  ];
+  const ratings=[
+    {lbl:'Asimilación de conocimientos',sub:'Capacidad para aprender y aplicar'},
+    {lbl:'Relación con compañeros',sub:'Contribución al clima laboral'},
+    {lbl:'Proactividad e ideas',sub:'Resolución de problemas y aporte creativo'},
+    {lbl:'Calidad y precisión',sub:'Esmero y exactitud en labores'},
+  ];
+  const techTags=['🤖 Inteligencia Artificial','🏭 Industria 4.0','📊 Ciencia de Datos','🌐 IoT Industrial','🔐 Ciberseguridad OT/IT','⛓️ Blockchain','📈 Big Data','🥽 Realidad Aumentada/VR','⚙️ Automatización','📱 Micro-learning Digital'];
+  const tecTags=['Segunda Lengua','Ciberseguridad','Ciencia de Datos','Automatización'];
+  const softTags=['💡 Pensamiento Crítico','📊 Análisis de Datos','📚 Auto-aprendizaje','🤝 Trabajo en Equipo','🚀 Proactividad','💬 Comunicación','🎯 Liderazgo','🔍 Solución de Problemas'];
+  const quotes=[
+    {txt:'"En esta experiencia se evidenció el sector productivo desde un enfoque más cercano y realista, pudimos ser partícipes de cada proceso que se maneja en una empresa."',rol:'Estudiante de Ingeniería en Calidad'},
+    {txt:'"La experiencia fue fundamental. Me permitió validar conceptos teóricos en situaciones reales, enfrentando desafíos técnicos y logísticos que no siempre se ven en el aula."',rol:'Estudiante participante'},
+    {txt:'"Quería conocer cómo funciona una empresa líder por dentro. Fue algo hermoso ver todo lo estudiado en acción en los procesos reales de producción y calidad."',rol:'Estudiante participante'},
+  ];
+
+  // Hero enriquecido (sin kpi-row separado)
+  const mkHeroCard=(val,lbl,sub,valColor,borderColor)=>
+    `<div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:10px;
+      padding:12px 16px;min-width:110px;display:flex;flex-direction:column;gap:2px;backdrop-filter:blur(4px)">
+      <div style="font-size:1.6rem;font-weight:900;color:${valColor};line-height:1">${val}</div>
+      <div style="font-size:.7rem;font-weight:700;color:rgba(255,255,255,.95);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
+      <div style="font-size:.65rem;color:rgba(255,255,255,.6);margin-top:1px">${sub}</div>
+    </div>`;
+  document.getElementById('hero-cuee').innerHTML=
+    mkHeroCard(INSCR,'Inscritos','Convocatoria total','#fff','rgba(255,255,255,.3)')+
+    mkHeroCard(CUPOS,'Cupos asignados',Math.round(CUPOS/INSCR*100)+'% de inscritos','#fbbf24','rgba(251,191,36,.4)')+
+    mkHeroCard(PARTIC,'Participantes',''+Math.round(PARTIC/CUPOS*100)+'% de cupos','#34d399','rgba(52,211,153,.4)')+
+    mkHeroCard(EMPRESAS,'Empresas aliadas','Sector productivo','#93c5fd','rgba(147,197,253,.4)');
+
+  // ── Doughnut Conversión ──
+  const cConv=document.getElementById('c-cuee-conv');
+  if(cConv){ if(cConv._ch) cConv._ch.destroy();
+    cConv._ch=new Chart(cConv,{type:'doughnut',data:{
+      labels:['Participantes efectivos','Cupo no utilizado','Sin cupo asignado'],
+      datasets:[{data:[132,41,146],
+        backgroundColor:['#10b981','#f59e0b','#bfdbfe'],
+        borderColor:['#059669','#d97706','#93c5fd'],
+        borderWidth:2,
+        datalabels:{
+          formatter:(v,ctx)=>{const t=319;return Math.round(v/t*100)+'%';},
+          color:['#fff','#92400e','#1d4ed8'],
+          font:{size:11,weight:'bold'}
+        }
+      }]
+    },options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},padding:10,boxWidth:11}},
+        datalabels:{}
+      }
+    },plugins:[ChartDataLabels]});
+  }
+
+  // ── Chart Total ──
+  const cTotal=document.getElementById('c-cuee-total');
+  if(cTotal){ if(cTotal._ch) cTotal._ch.destroy();
+    cTotal._ch=new Chart(cTotal,{type:'bar',data:{
+      labels:['Inscritos','Cupos Asignados','Participantes'],
+      datasets:[{label:'Estudiantes',data:[INSCR,CUPOS,PARTIC],
+        backgroundColor:['#102D69','#2563eb','#10b981'],borderRadius:8,borderWidth:0,
+        datalabels:{anchor:'end',align:'top',font:{size:14,weight:'bold'},color:['#102D69','#2563eb','#10b981'],formatter:v=>v}}]
+    },options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:30}},
+      plugins:{legend:{display:false},datalabels:{}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:12,weight:'600'}}},y:{display:false,beginAtZero:true}}
+    },plugins:[ChartDataLabels]});
+  }
+
+  // ── Chart Facultad Comparativo ──
+  const cFac=document.getElementById('c-cuee-fac-comp');
+  if(cFac){ if(cFac._ch) cFac._ch.destroy();
+    cFac._ch=new Chart(cFac,{type:'bar',data:{
+      labels:facLabels,
+      datasets:[
+        {label:'Inscritos',data:facIns,backgroundColor:'rgba(16,45,105,.2)',borderColor:'#102D69',borderWidth:2,borderRadius:4,
+         datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#102D69',formatter:v=>v}},
+        {label:'Participantes',data:facPar,backgroundColor:'#10b98188',borderColor:'#10b981',borderWidth:2,borderRadius:4,
+         datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#10b981',formatter:v=>v}},
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:28}},
+      plugins:{legend:{position:'top',labels:{font:{size:11},padding:12,boxWidth:12}},datalabels:{}},
+      scales:{x:{grid:{color:'#eef1f7'},ticks:{font:{size:10}}},y:{grid:{color:'#eef1f7'},beginAtZero:true,ticks:{font:{size:10}}}}
+    },plugins:[ChartDataLabels]});
+  }
+
+  // ── Doughnut Facultad ──
+  const cPie=document.getElementById('c-cuee-fac-pie');
+  if(cPie){ if(cPie._ch) cPie._ch.destroy();
+    const pieColors=['#2563eb','#10b981','#f59e0b','#8b5cf6'];
+    cPie._ch=new Chart(cPie,{type:'doughnut',data:{
+      labels:facLabels,
+      datasets:[{data:facPar,backgroundColor:pieColors,borderWidth:2,borderColor:'#fff',
+        datalabels:{formatter:(v)=>Math.round(v/PARTIC*100)+'%',color:'#fff',font:{size:11,weight:'bold'}}}]
+    },options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:9,boxWidth:11}},datalabels:{}}
+    },plugins:[ChartDataLabels]});
+    // tabla
+    const tbody=document.getElementById('cuee-fac-table');
+    if(tbody && !tbody._built){ tbody._built=true;
+      facLabels.forEach((f,i)=>{
+        const pct=Math.round(facPar[i]/facIns[i]*100);
+        const tr=document.createElement('tr'); tr.style.borderBottom='1px solid #eef1f7';
+        tr.innerHTML=`<td style="padding:6px 10px;font-weight:600;font-size:.77rem">${f}</td>
+          <td style="padding:6px 10px;text-align:center;font-size:.77rem">${facIns[i]}</td>
+          <td style="padding:6px 10px;text-align:center;font-size:.77rem;font-weight:700;color:${pieColors[i]}">${facPar[i]}</td>
+          <td style="padding:6px 10px;text-align:center"><span style="background:${pieColors[i]}22;color:${pieColors[i]};border-radius:8px;padding:2px 9px;font-size:.71rem;font-weight:700">${pct}%</span></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  // ── Chart Empresas ──
+  const cEmp=document.getElementById('c-cuee-empresas');
+  if(cEmp){ if(cEmp._ch) cEmp._ch.destroy();
+    const eLabels=empData.map(e=>e.n), eVals=empData.map(e=>e.v), eCols=empData.map(e=>e.c);
+    cEmp._ch=new Chart(cEmp,{type:'bar',data:{
+      labels:eLabels,
+      datasets:[{label:'Asistentes',data:eVals,backgroundColor:eCols,borderRadius:6,borderWidth:0,
+        datalabels:{anchor:'end',align:'right',font:{size:11,weight:'bold'},color:eCols,formatter:v=>v}}]
+    },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:40}},
+      plugins:{legend:{display:false},datalabels:{}},
+      scales:{x:{display:false,beginAtZero:true},y:{grid:{display:false},ticks:{font:{size:10,weight:'600'}}}}
+    },plugins:[ChartDataLabels]});
+  }
+
+  // ── Empresas Grid ──
+  const eGrid=document.getElementById('cuee-empresas-grid');
+  if(eGrid && !eGrid._built){ eGrid._built=true;
+    const maxV=Math.max(...empData.map(x=>x.v));
+    empData.forEach(e=>{
+      const isTop=e.v===maxV;
+      const barW=Math.round(e.v/maxV*100);
+      eGrid.innerHTML+=`<div style="background:var(--surface,#fff);border-radius:10px;border:1px solid ${isTop?e.c+'66':'var(--border)'};padding:11px 13px;display:flex;align-items:center;gap:11px;box-shadow:0 1px 6px rgba(16,45,105,.05)">
+        <div style="width:38px;height:38px;border-radius:50%;background:${e.c};display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${e.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.77rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.n}</div>
+          <div style="font-size:.65rem;color:var(--text2);margin-bottom:5px">${e.s}</div>
+          <div style="background:#eef1f7;border-radius:4px;height:5px;overflow:hidden"><div style="background:${e.c};height:100%;width:${barW}%;border-radius:4px"></div></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:1.2rem;font-weight:900;color:${e.c};line-height:1">${e.v}</div>
+          <div style="font-size:.6rem;color:var(--text2)">${isTop?'🏆 mayor':'part.'}</div>
+        </div>
+      </div>`;
+    });
+  }
+
+  // ── Ratings ──
+  const rGrid=document.getElementById('cuee-ratings');
+  if(rGrid && !rGrid._built){ rGrid._built=true;
+    ratings.forEach(r=>{
+      rGrid.innerHTML+=`<div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 8px rgba(16,45,105,.05)">
+        <div style="font-size:2.2rem;font-weight:900;color:#10b981;min-width:48px">5.0</div>
+        <div><div style="color:#f59e0b;font-size:.95rem;letter-spacing:1px">★★★★★</div>
+          <div style="font-size:.78rem;font-weight:600;color:var(--text);margin-top:3px">${r.lbl}</div>
+          <div style="font-size:.68rem;color:var(--text2)">${r.sub}</div></div>
+      </div>`;
+    });
+  }
+
+  // ── Tags ──
+  const buildTags=(id,arr,cls)=>{ const el=document.getElementById(id); if(el&&!el._built){ el._built=true; arr.forEach(t=>{ el.innerHTML+=`<span style="${cls};border-radius:8px;padding:8px 10px;font-size:.73rem;font-weight:600;display:block;text-align:center;line-height:1.3">${t}</span>`; }); }};
+  buildTags('cuee-tags-tech',techTags,'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe');
+  buildTags('cuee-tags-tec', tecTags, 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe');
+  buildTags('cuee-tags-soft',softTags,'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0');
+
+  // ── Citas ──
+  const qGrid=document.getElementById('cuee-quotes');
+  if(qGrid && !qGrid._built){ qGrid._built=true;
+    quotes.forEach(q=>{
+      qGrid.innerHTML+=`<div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;box-shadow:0 1px 8px rgba(16,45,105,.05)">
+        <div style="font-size:1.2rem;color:#f59e0b;margin-bottom:8px">❝</div>
+        <p style="font-size:.77rem;color:var(--text2);line-height:1.6;font-style:italic">${q.txt}</p>
+        <div style="margin-top:10px;font-size:.7rem;color:var(--itm);font-weight:600">— ${q.rol}</div>
+      </div>`;
+    });
+  }
 }
 
 // ── Canvas Word Cloud ─────────────────────────────────────────────────────────
@@ -3278,6 +3956,183 @@ function drawWordCloud(canvasId, words) {
   });
 }
 
+// ── Históricos ────────────────────────────────────────────────────────────────
+function renderHistoricos() {
+  if (document.getElementById('c-hist-pre-anio')._built) return;
+  document.getElementById('c-hist-pre-anio')._built = true;
+
+  // ── Datos ──
+  const anios = ['2024','2025','2026*'];
+  const preAnio  = [1127, 1106, 477];
+  const inicAnio = [769,  838,  405];
+  const gradAnio = [699,  989,  342];
+  const vincAnio = [141,  249,  96];
+
+  const trimLabels = ['T2-2024','T3-2024','T4-2024','T1-2025','T2-2025','T3-2025','T4-2025','T1-2026','T2-2026'];
+
+  // Asistentes preprácticas por trimestre (ene=T1, abr=T2, jul=T3, oct=T4)
+  const preTrimAll = [
+    {label:'2024', data:[null,237,281,284,325,null,null,null,null], color:'#102D69'},
+    {label:'2025', data:[null,null,null,null,null,217,326,200,363], color:'#3b82f6'},
+    {label:'2026*',data:[null,null,null,null,null,null,null,236,241], color:'#10b981'},
+  ];
+  // Aplanado para gráfica combinada por trimestre
+  const preTrimFlat  = [null,237,281,284,325,217,326,200,363,236,241];
+  const trimLabels2  = ['ene-24','abr-24','jul-24','oct-24','ene-25','abr-25','jul-25','oct-25','ene-26','abr-26'];
+
+  // Iniciaron prácticas por trimestre
+  const inicTrimFlat = [null,null,548,221,287,178,229,144,257,148];
+
+  // Graduados por trimestre
+  const gradTrimFlat = [null,157,274,268,253,249,247,240,169,171];
+
+  // Vinculados por trimestre
+  const vincTrimFlat = [null,33,54,54,62,58,57,72,48,48];
+
+  // ── Colores ITM ──
+  const C = { blue:'#102D69', lblue:'#3b82f6', green:'#10b981', amber:'#f59e0b', purple:'#8b5cf6', red:'#ef4444' };
+
+  const defPlugin = { legend:{position:'bottom',labels:{font:{size:11},padding:10}},
+    datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#334',
+      formatter:v=>v==null?'':v} };
+
+  // ── KPIs ──
+  const kpiData = [
+    {v:'3.710', l:'Total asistentes preprácticas', s:'2024–2026', c:C.blue},
+    {v:'2.012', l:'Estudiantes que iniciaron', s:'2024–2026', c:C.green},
+    {v:'2.030', l:'Se graduaron con práctica', s:'2024–2026', c:C.amber},
+    {v:'486',   l:'Vinculados a empresa', s:'2024–2026', c:C.purple},
+  ];
+  const kpiEl = document.getElementById('hist-kpis');
+  kpiData.forEach(k => {
+    kpiEl.innerHTML += `<div style="background:#fff;border:1px solid #e2e8f0;border-top:4px solid ${k.c};border-radius:10px;padding:18px 14px;text-align:center">
+      <div style="font-size:2rem;font-weight:900;color:${k.c};line-height:1.1">${k.v}</div>
+      <div style="font-size:.78rem;font-weight:700;color:#334;margin-top:6px">${k.l}</div>
+      <div style="font-size:.7rem;color:#888;margin-top:3px">${k.s}</div>
+    </div>`;
+  });
+
+  const mkBar = (id, labels, datasets, title) => {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, { type:'bar', data:{ labels, datasets },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ ...defPlugin, title:{display:!!title,text:title,font:{size:12}} },
+        scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
+                 y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } } });
+  };
+
+  const mkLine = (id, labels, datasets) => {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, { type:'line', data:{ labels, datasets },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ ...defPlugin },
+        scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
+                 y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } } });
+  };
+
+  // ── Chart 1: Preprácticas por año ──
+  mkBar('c-hist-pre-anio', anios, [{
+    label:'Asistentes', data:preAnio,
+    backgroundColor:[C.blue, C.lblue, C.green],
+    borderRadius:6, borderSkipped:false
+  }]);
+
+  // ── Chart 2: Preprácticas por trimestre ──
+  mkLine('c-hist-pre-trim', trimLabels2, [{
+    label:'Asistentes por trimestre',
+    data:preTrimFlat,
+    borderColor:C.blue, backgroundColor:'rgba(16,45,105,.08)',
+    tension:.35, pointRadius:5, pointBackgroundColor:C.blue, fill:true,
+    spanGaps:true
+  }]);
+
+  document.getElementById('hist-analisis-pre').innerHTML =
+    `<strong>📌 Análisis:</strong> El curso de preprácticas mantiene una demanda sostenida: <strong>1.127</strong> asistentes en 2024 y <strong>1.106</strong> en 2025, con ligera estabilidad. En 2026 se registran <strong>477 asistentes</strong> solo en el primer semestre, proyectando cifras similares a años anteriores. El pico trimestral más alto se presentó en <strong>octubre 2025 (363)</strong> y <strong>abril 2025 (326)</strong>, evidenciando mayor demanda en el segundo y cuarto trimestre de cada año.`;
+
+  // ── Chart 3: Iniciaron prácticas por año ──
+  mkBar('c-hist-inic-anio', anios, [{
+    label:'Iniciaron prácticas', data:inicAnio,
+    backgroundColor:[C.blue, C.green, C.amber],
+    borderRadius:6, borderSkipped:false
+  }]);
+
+  // ── Chart 4: Iniciaron por trimestre ──
+  mkLine('c-hist-inic-trim', trimLabels2, [{
+    label:'Estudiantes que iniciaron',
+    data:inicTrimFlat,
+    borderColor:C.green, backgroundColor:'rgba(16,185,129,.08)',
+    tension:.35, pointRadius:5, pointBackgroundColor:C.green, fill:true,
+    spanGaps:true
+  }]);
+
+  document.getElementById('hist-analisis-inic').innerHTML =
+    `<strong>📌 Análisis:</strong> Los registros de inicio de prácticas muestran crecimiento: de <strong>769</strong> en 2024 a <strong>838</strong> en 2025 (+8.97%). El trimestre de <strong>julio 2024</strong> fue excepcionalmente alto con <strong>548 estudiantes</strong>, posiblemente por acumulación de semestres anteriores. En 2026, el primer semestre acumula <strong>405 estudiantes</strong>, ritmo coherente con años previos. Se observa una variabilidad trimestral significativa que sugiere picos asociados a calendarios académicos.`;
+
+  // ── Chart 5: Graduados por año ──
+  mkBar('c-hist-grad-anio', anios, [{
+    label:'Graduados con práctica', data:gradAnio,
+    backgroundColor:['#f59e0b','#fbbf24','#fde68a'],
+    borderRadius:6, borderSkipped:false
+  }]);
+
+  document.getElementById('hist-analisis-grad').innerHTML =
+    `<strong>📌 Análisis:</strong> Los estudiantes que se graduaron con práctica reflejan un <strong>crecimiento notable</strong>: de <strong>699</strong> en 2024 a <strong>989</strong> en 2025 (+41.5%). Este salto indica mayor retención y finalización exitosa del proceso. En 2026 se reportan <strong>342</strong> graduados en el primer semestre, con tendencia a superar el 2024.`;
+
+  // ── Chart 6: Graduados por trimestre ──
+  mkLine('c-hist-grad-trim', trimLabels2, [{
+    label:'Graduados con práctica',
+    data:gradTrimFlat,
+    borderColor:C.amber, backgroundColor:'rgba(245,158,11,.08)',
+    tension:.35, pointRadius:5, pointBackgroundColor:C.amber, fill:true,
+    spanGaps:true
+  }]);
+
+  // ── Chart 7: Vinculados por año ──
+  mkBar('c-hist-vinc-anio', anios, [{
+    label:'Vinculados', data:vincAnio,
+    backgroundColor:[C.purple, '#a78bfa', '#c4b5fd'],
+    borderRadius:6, borderSkipped:false
+  }]);
+
+  // ── Chart 8: Vinculados por trimestre ──
+  mkLine('c-hist-vinc-trim', trimLabels2, [{
+    label:'Vinculados por trimestre',
+    data:vincTrimFlat,
+    borderColor:C.purple, backgroundColor:'rgba(139,92,246,.08)',
+    tension:.35, pointRadius:5, pointBackgroundColor:C.purple, fill:true,
+    spanGaps:true
+  }]);
+
+  document.getElementById('hist-analisis-vinc').innerHTML =
+    `<strong>📌 Análisis:</strong> Las vinculaciones a empresa crecieron un <strong>76.6%</strong> de 2024 (<strong>141</strong>) a 2025 (<strong>249</strong>), reflejando mayor articulación con el sector productivo. En 2026, con <strong>96 vinculados</strong> en el primer semestre, se proyecta mantener el nivel de 2024. El pico trimestral fue <strong>octubre 2025 (72)</strong>, coincidiendo con el ciclo de mayor demanda del año.`;
+
+  // ── Chart 9: Comparativo integral ──
+  const ctxComp = document.getElementById('c-hist-comp');
+  if (ctxComp) {
+    new Chart(ctxComp, {
+      type:'bar',
+      data:{ labels: anios,
+        datasets:[
+          { label:'Asistentes preprácticas', data:preAnio,  backgroundColor:'rgba(16,45,105,.8)',   borderRadius:5 },
+          { label:'Iniciaron prácticas',      data:inicAnio, backgroundColor:'rgba(16,185,129,.8)',  borderRadius:5 },
+          { label:'Graduados con práctica',   data:gradAnio, backgroundColor:'rgba(245,158,11,.85)', borderRadius:5 },
+          { label:'Vinculados a empresa',     data:vincAnio, backgroundColor:'rgba(139,92,246,.85)', borderRadius:5 },
+        ]
+      },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{position:'bottom',labels:{font:{size:11},padding:12}},
+          datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#334',formatter:v=>v} },
+        scales:{ x:{grid:{display:false},ticks:{font:{size:11}}},
+                 y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } }
+    });
+  }
+
+  document.getElementById('hist-analisis-comp').innerHTML =
+    `<strong>📌 Análisis integral:</strong> El comparativo muestra que el proceso de prácticas mantiene una <strong>alta demanda</strong> en preprácticas (>1.000/año), con una <strong>tasa de conversión a graduados</strong> que mejoró del 62% en 2024 al 90% en 2025. Las vinculaciones a empresa son el indicador de mayor crecimiento (+76.6%), señal de fortalecimiento de la alianza academia–empresa. El año 2026 muestra ritmos acordes con la proyección histórica. <em>(*2026: datos del primer semestre)</em>`;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 function init() {
   const anioSel=document.getElementById('f-anio');
@@ -3299,6 +4154,65 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── Carrusel CUEE ────────────────────────────────────────────────────────────
+(function(){
+  let cueeIdx = 0;
+  let cueeTotal = 0;
+  let cueeTimer = null;
+
+  function cueeInit() {
+    const slides = document.querySelectorAll('.cuee-slide');
+    const dotsEl = document.getElementById('cuee-dots');
+    cueeTotal = slides.length;
+    if(!cueeTotal || !dotsEl) return;
+    // Crear dots
+    dotsEl.innerHTML = '';
+    slides.forEach((_,i)=>{
+      const d = document.createElement('div');
+      d.className = 'cuee-dot' + (i===0?' active':'');
+      d.onclick = ()=>cueeGoTo(i);
+      dotsEl.appendChild(d);
+    });
+    cueeAutoplay();
+  }
+
+  window.cueeGoTo = function(idx) {
+    const slides  = document.querySelectorAll('.cuee-slide');
+    const thumbs  = document.querySelectorAll('.cuee-thumb');
+    const dots    = document.querySelectorAll('.cuee-dot');
+    if(!slides.length) return;
+    slides[cueeIdx].classList.remove('active');
+    thumbs[cueeIdx]?.classList.remove('active');
+    dots[cueeIdx]?.classList.remove('active');
+    cueeIdx = (idx + cueeTotal) % cueeTotal;
+    slides[cueeIdx].classList.add('active');
+    thumbs[cueeIdx]?.classList.add('active');
+    dots[cueeIdx]?.classList.add('active');
+    // scroll thumb visible
+    const tw = document.getElementById('cuee-thumbs');
+    if(tw && thumbs[cueeIdx]) thumbs[cueeIdx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    cueeAutoplay();
+  };
+
+  window.cueeMove = function(dir) { cueeGoTo(cueeIdx + dir); };
+
+  function cueeAutoplay() {
+    clearInterval(cueeTimer);
+    cueeTimer = setInterval(()=>cueeGoTo(cueeIdx+1), 4500);
+  }
+
+  // Iniciar cuando se cargue la sección CUEE
+  const origGoTo = window.goTo;
+  window.goTo = function(name, btn) {
+    origGoTo(name, btn);
+    if(name==='cuee') { setTimeout(cueeInit, 80); }
+  };
+  // También por si el carrusel ya está visible al cargar
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if(document.querySelector('.cuee-slide')) cueeInit();
+  });
+})();
 
 // ── PDF Export ────────────────────────────────────────────────────────────────
 function exportPDF() {
@@ -3337,7 +4251,8 @@ if __name__ == '__main__':
     print('Generando HTML...')
     logo  = get_logo()
     dj    = json.dumps(data, ensure_ascii=False, default=str)
-    html  = HTML.replace('__LOGO__', logo).replace('__DATA_JSON__', dj)
+    cuee_carousel = build_cuee_carousel()
+    html  = HTML.replace('__LOGO__', logo).replace('__DATA_JSON__', dj).replace('__CUEE_CAROUSEL__', cuee_carousel)
 
     out = 'index.html'
     with open(out, 'w', encoding='utf-8') as f:

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe Ejecutivo – Pasantías CUEE 2026-1 | ITM</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root{
+    --itm:#102D69; --itm2:#1a4a9c; --itm3:#2563eb;
+    --gold:#f59e0b; --green:#10b981; --orange:#f97316; --red:#ef4444;
+    --bg:#f0f4fb; --card:#fff; --text:#1e293b; --text2:#475569; --border:#e2e8f0;
+    --rad:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  /* ── HEADER ── */
+  .page-header{
+    background:linear-gradient(135deg,var(--itm) 0%,var(--itm2) 60%,#1e3a8a 100%);
+    color:#fff; padding:0; position:relative; overflow:hidden;
+  }
+  .page-header::before{
+    content:''; position:absolute; inset:0;
+    background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='28'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+    pointer-events:none;
+  }
+  .header-inner{max-width:1200px;margin:0 auto;padding:40px 32px 32px;position:relative}
+  .header-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+    border-radius:20px;padding:5px 14px;font-size:.75rem;letter-spacing:.06em;
+    text-transform:uppercase;font-weight:600;margin-bottom:16px;
+  }
+  .header-badge span{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .header-inner h1{font-size:2.1rem;font-weight:800;line-height:1.2;margin-bottom:8px}
+  .header-inner h1 em{font-style:normal;color:var(--gold)}
+  .header-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px;font-size:.82rem;color:rgba(255,255,255,.7)}
+  .header-meta span{display:flex;align-items:center;gap:5px}
+  .header-meta b{color:#fff}
+
+  /* ── LAYOUT ── */
+  .main{max-width:1200px;margin:0 auto;padding:32px}
+  .section-title{
+    font-size:1.05rem;font-weight:700;color:var(--itm);
+    border-left:4px solid var(--gold);padding-left:12px;margin:36px 0 20px;
+    letter-spacing:.01em;text-transform:uppercase;
+  }
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+
+  /* ── KPI HERO ── */
+  .kpi-hero{
+    background:var(--card);border-radius:var(--rad);box-shadow:0 2px 16px rgba(16,45,105,.08);
+    padding:28px 32px;display:flex;align-items:center;gap:0;
+    border:1px solid var(--border);overflow:hidden;position:relative;
+  }
+  .kpi-hero::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:var(--c,var(--itm))}
+  .kpi-val{font-size:2.8rem;font-weight:900;color:var(--c,var(--itm));line-height:1}
+  .kpi-lbl{font-size:.78rem;color:var(--text2);margin-top:4px;font-weight:500;line-height:1.3}
+  .kpi-icon{font-size:2rem;margin-left:auto;opacity:.15}
+  .kpi-sub{font-size:.72rem;color:var(--text2);margin-top:2px}
+
+  /* ── FUNNEL ── */
+  .funnel-wrap{
+    background:var(--card);border-radius:var(--rad);border:1px solid var(--border);
+    box-shadow:0 2px 16px rgba(16,45,105,.06);padding:32px 24px;
+  }
+  .funnel-title{text-align:center;font-size:.85rem;font-weight:700;color:var(--text2);margin-bottom:24px;text-transform:uppercase;letter-spacing:.07em}
+  .funnel{display:flex;flex-direction:column;align-items:center;gap:0}
+  .funnel-step{position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-weight:700;transition:.2s}
+  .funnel-step .fval{font-size:1.6rem;font-weight:900}
+  .funnel-step .flbl{font-size:.73rem;font-weight:500;opacity:.9;margin-top:2px}
+  .funnel-arrow{text-align:center;color:var(--text2);font-size:.72rem;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:1px}
+  .funnel-arrow .arr{font-size:1.1rem;color:var(--border)}
+  .funnel-arrow .pct{background:#f1f5f9;border-radius:12px;padding:2px 10px;font-size:.7rem;color:var(--text2);font-weight:600}
+
+  /* ── CARD ── */
+  .card{background:var(--card);border-radius:var(--rad);border:1px solid var(--border);box-shadow:0 2px 12px rgba(16,45,105,.06);overflow:hidden}
+  .card-head{padding:18px 20px 0;border-bottom:none}
+  .card-head h3{font-size:.88rem;font-weight:700;color:var(--itm);text-transform:uppercase;letter-spacing:.04em}
+  .card-body{padding:16px 20px 20px}
+  .ch{position:relative}
+  .ch.h280{height:280px}
+  .ch.h240{height:240px}
+  .ch.h300{height:300px}
+
+  /* ── EMPRESA CARDS ── */
+  .empresa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .emp-card{
+    background:var(--card);border-radius:12px;border:1px solid var(--border);
+    padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;
+    box-shadow:0 1px 8px rgba(16,45,105,.06);transition:.2s;text-align:center;
+  }
+  .emp-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,45,105,.12)}
+  .emp-icon{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:900;color:#fff}
+  .emp-name{font-size:.78rem;font-weight:700;color:var(--text)}
+  .emp-sector{font-size:.68rem;color:var(--text2)}
+  .emp-count{font-size:1.2rem;font-weight:900;color:var(--itm)}
+  .emp-sub{font-size:.65rem;color:var(--text2)}
+
+  /* ── RATING ── */
+  .rating-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .rating-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 8px rgba(16,45,105,.05)}
+  .rating-stars{font-size:1rem;letter-spacing:1px;color:var(--gold)}
+  .rating-score{font-size:2rem;font-weight:900;color:var(--green)}
+  .rating-lbl{font-size:.78rem;color:var(--text);font-weight:600;line-height:1.3}
+  .rating-sub{font-size:.68rem;color:var(--text2);margin-top:2px}
+
+  /* ── TAGS ── */
+  .tag-cloud{display:flex;flex-wrap:wrap;gap:9px;padding:4px 0}
+  .tag{border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+  .tag.tech{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+  .tag.comp{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+  .tag.opp{background:#fefce8;color:#92400e;border:1px solid #fde68a}
+
+  /* ── INSIGHT BOX ── */
+  .insight{background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:12px;border-left:4px solid var(--itm3);padding:16px 18px;margin-top:8px}
+  .insight-title{font-size:.72rem;font-weight:700;color:var(--itm3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .insight p{font-size:.8rem;color:var(--text2);line-height:1.6}
+
+  /* ── CONCLUSIONES ── */
+  .obs-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .obs-card{border-radius:12px;padding:18px 20px;border:1px solid}
+  .obs-card.warn{background:#fefce8;border-color:#fde68a}
+  .obs-card.sugg{background:#f0fdf4;border-color:#bbf7d0}
+  .obs-card.concl{background:#eff6ff;border-color:#bfdbfe}
+  .obs-card h4{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  .obs-card ul{padding-left:16px;font-size:.78rem;color:var(--text2);line-height:1.7}
+  .obs-card ul li{margin-bottom:4px}
+
+  /* ── FOOTER ── */
+  .page-footer{background:var(--itm);color:rgba(255,255,255,.6);text-align:center;padding:20px;font-size:.72rem;margin-top:48px}
+  .page-footer b{color:#fff}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:900px){
+    .grid-4,.empresa-grid{grid-template-columns:repeat(2,1fr)}
+    .grid-3,.rating-grid,.obs-grid{grid-template-columns:1fr}
+    .grid-2{grid-template-columns:1fr}
+    .header-inner h1{font-size:1.5rem}
+  }
+  @media(max-width:600px){
+    .grid-4,.empresa-grid{grid-template-columns:1fr 1fr}
+    .main{padding:16px}
+    .kpi-val{font-size:2rem}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HEADER ══════════ -->
+<div class="page-header">
+  <div class="header-inner">
+    <div class="header-badge"><span></span> Informe Ejecutivo · Semestre 2026-1</div>
+    <h1>Pasantías <em>CUEE</em><br>Institución Universitaria ITM</h1>
+    <div style="font-size:.9rem;color:rgba(255,255,255,.75);margin-top:8px;max-width:620px;line-height:1.5">
+      Comité Universidad, Empresa y Estado — Articulación academia–sector productivo para el desarrollo de competencias reales en estudiantes de educación superior.
+    </div>
+    <div class="header-meta">
+      <span>📅 <b>Fechas:</b> Mayo 13–15 y 19–21 de 2026</span>
+      <span>🏢 <b>Empresas:</b> 8 organizaciones aliadas</span>
+      <span>📍 <b>Medellín, Antioquia</b></span>
+      <span>🎓 <b>IU ITM</b> — Prácticas Profesionales</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══════════ KPI HEROES ══════════ -->
+  <p class="section-title">Tablero General de Resultados</p>
+  <div class="grid-4">
+    <div class="kpi-hero" style="--c:#102D69">
+      <div><div class="kpi-val">319</div><div class="kpi-lbl">Estudiantes<br>Inscritos</div><div class="kpi-sub">Convocatoria total</div></div>
+      <div class="kpi-icon">📋</div>
+    </div>
+    <div class="kpi-hero" style="--c:#2563eb">
+      <div><div class="kpi-val">173</div><div class="kpi-lbl">Cupos<br>Asignados</div><div class="kpi-sub">54.2% de inscritos</div></div>
+      <div class="kpi-icon">✅</div>
+    </div>
+    <div class="kpi-hero" style="--c:#10b981">
+      <div><div class="kpi-val">132</div><div class="kpi-lbl">Participantes<br>Efectivos</div><div class="kpi-sub">76.3% de cupos</div></div>
+      <div class="kpi-icon">🎓</div>
+    </div>
+    <div class="kpi-hero" style="--c:#f59e0b">
+      <div><div class="kpi-val">8</div><div class="kpi-lbl">Empresas<br>Participantes</div><div class="kpi-sub">Sector productivo Antioquia</div></div>
+      <div class="kpi-icon">🏢</div>
+    </div>
+  </div>
+
+  <!-- ══════════ FUNNEL + CHART TOTAL ══════════ -->
+  <div class="grid-2" style="margin-top:20px">
+
+    <!-- Funnel -->
+    <div class="funnel-wrap">
+      <div class="funnel-title">Embudo de Participación</div>
+      <div class="funnel">
+        <div class="funnel-step" style="background:linear-gradient(90deg,#102D69,#1a4a9c);width:100%;border-radius:10px 10px 4px 4px;padding:20px 0">
+          <div class="fval">319</div><div class="flbl">Estudiantes Inscritos</div>
+        </div>
+        <div class="funnel-arrow">
+          <div class="arr">▼</div>
+          <div class="pct">54.2% avanzó</div>
+        </div>
+        <div class="funnel-step" style="background:linear-gradient(90deg,#2563eb,#3b82f6);width:82%;border-radius:6px;padding:18px 0">
+          <div class="fval">173</div><div class="flbl">Cupos Asignados</div>
+        </div>
+        <div class="funnel-arrow">
+          <div class="arr">▼</div>
+          <div class="pct">76.3% asistió</div>
+        </div>
+        <div class="funnel-step" style="background:linear-gradient(90deg,#10b981,#059669);width:60%;border-radius:6px 6px 10px 10px;padding:18px 0">
+          <div class="fval">132</div><div class="flbl">Participantes Efectivos</div>
+        </div>
+      </div>
+      <div class="insight" style="margin-top:20px">
+        <div class="insight-title">Análisis</div>
+        <p>De cada 10 estudiantes inscritos, <b>4 participaron efectivamente</b>. La deserción entre cupo asignado y participación efectiva (24%) indica oportunidades de mejora en seguimiento y motivación.</p>
+      </div>
+    </div>
+
+    <!-- Gráfica total -->
+    <div class="card">
+      <div class="card-head"><h3>Resumen General de Participación</h3></div>
+      <div class="card-body">
+        <div class="ch h280"><canvas id="c-total"></canvas></div>
+        <div style="display:flex;justify-content:center;gap:20px;margin-top:12px;font-size:.74rem;color:var(--text2)">
+          <span>📉 Deserción inscripción→cupo: <b style="color:#ef4444">45.8%</b></span>
+          <span>📉 Deserción cupo→participación: <b style="color:#f97316">23.7%</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ POR FACULTAD ══════════ -->
+  <p class="section-title">Distribución por Facultad</p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><h3>Inscritos vs Participantes por Facultad</h3></div>
+      <div class="card-body">
+        <div class="ch h300"><canvas id="c-fac-comp"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Participantes Efectivos por Facultad</h3></div>
+      <div class="card-body">
+        <div class="ch h300"><canvas id="c-fac-doughnut"></canvas></div>
+        <div style="margin-top:14px">
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+            <thead><tr style="background:#f8fafd">
+              <th style="padding:7px 10px;text-align:left;color:var(--text2);font-weight:600">Facultad</th>
+              <th style="padding:7px 10px;text-align:center;color:var(--text2);font-weight:600">Inscritos</th>
+              <th style="padding:7px 10px;text-align:center;color:var(--text2);font-weight:600">Participantes</th>
+              <th style="padding:7px 10px;text-align:center;color:var(--text2);font-weight:600">% Conv.</th>
+            </tr></thead>
+            <tbody id="fac-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ POR EMPRESA ══════════ -->
+  <p class="section-title">Participación por Empresa Aliada</p>
+  <div class="card">
+    <div class="card-head"><h3>Estudiantes Asistentes por Empresa</h3></div>
+    <div class="card-body">
+      <div class="ch h280"><canvas id="c-empresas"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Empresa cards -->
+  <div class="empresa-grid" style="margin-top:20px">
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#102D69">💻</div>
+      <div class="emp-name">CEIBA Software</div>
+      <div class="emp-sector">Tecnología · Software</div>
+      <div class="emp-count">16</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#e74c3c">🥤</div>
+      <div class="emp-name">Postobón</div>
+      <div class="emp-sector">Alimentos y Bebidas</div>
+      <div class="emp-count">20</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#9b59b6">💄</div>
+      <div class="emp-name">Prebel</div>
+      <div class="emp-sector">Cosmética · Belleza</div>
+      <div class="emp-count">8</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#2563eb">🚇</div>
+      <div class="emp-name">Metro de Medellín</div>
+      <div class="emp-sector">Transporte Masivo</div>
+      <div class="emp-count">23</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#6d4c41">☕</div>
+      <div class="emp-name">Colcafé</div>
+      <div class="emp-sector">Alimentos · Grupo Nutresa</div>
+      <div class="emp-count">9</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#f59e0b">👗</div>
+      <div class="emp-name">Línea Directa</div>
+      <div class="emp-sector">Textil · Moda</div>
+      <div class="emp-count" style="color:#f59e0b">27</div><div class="emp-sub">participantes · <b style="color:#f59e0b">Mayor</b></div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#10b981">🛡️</div>
+      <div class="emp-name">Protección</div>
+      <div class="emp-sector">Finanzas · Pensiones</div>
+      <div class="emp-count">14</div><div class="emp-sub">participantes</div>
+    </div>
+    <div class="emp-card">
+      <div class="emp-icon" style="background:#e67e22">🍪</div>
+      <div class="emp-name">Noel</div>
+      <div class="emp-sector">Alimentos · Grupo Nutresa</div>
+      <div class="emp-count">15</div><div class="emp-sub">participantes</div>
+    </div>
+  </div>
+
+  <!-- ══════════ EVALUACIÓN EMPRESARIOS ══════════ -->
+  <p class="section-title">Evaluación de los Empresarios (Escala 1–5)</p>
+  <div class="rating-grid">
+    <div class="rating-card">
+      <div class="rating-score">5.0</div>
+      <div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-lbl">Asimilación de conocimientos</div>
+        <div class="rating-sub">Capacidad para aprender y aplicar lo aprendido</div>
+      </div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-score">5.0</div>
+      <div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-lbl">Relación con compañeros</div>
+        <div class="rating-sub">Contribución al clima laboral</div>
+      </div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-score">5.0</div>
+      <div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-lbl">Proactividad e ideas</div>
+        <div class="rating-sub">Resolución de problemas y aporte creativo</div>
+      </div>
+    </div>
+    <div class="rating-card">
+      <div class="rating-score">5.0</div>
+      <div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-lbl">Calidad y precisión</div>
+        <div class="rating-sub">Esmero y exactitud en labores asignadas</div>
+      </div>
+    </div>
+  </div>
+  <div class="insight" style="margin-top:12px">
+    <div class="insight-title">Evaluación global 5.0 / 5.0</div>
+    <p>Los empresarios calificaron con <b>puntaje máximo (5/5)</b> en los cuatro criterios evaluados. Esto refleja una percepción excelente del desempeño, actitud y disposición de los estudiantes ITM en el entorno empresarial.</p>
+  </div>
+
+  <!-- ══════════ TENDENCIAS Y COMPETENCIAS ══════════ -->
+  <p class="section-title">Tendencias Tecnológicas Identificadas</p>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><h3>Tecnologías demandadas por el sector</h3></div>
+      <div class="card-body">
+        <div class="tag-cloud">
+          <span class="tag tech">🤖 Inteligencia Artificial</span>
+          <span class="tag tech">🏭 Industria 4.0</span>
+          <span class="tag tech">📊 Ciencia de Datos</span>
+          <span class="tag tech">🌐 IoT Industrial</span>
+          <span class="tag tech">🔐 Ciberseguridad OT/IT</span>
+          <span class="tag tech">⛓️ Blockchain</span>
+          <span class="tag tech">📈 Big Data</span>
+          <span class="tag tech">🥽 Realidad Aumentada/VR</span>
+          <span class="tag tech">🤖 Automatización</span>
+          <span class="tag tech">📱 Micro-learning Digital</span>
+        </div>
+        <div class="insight" style="margin-top:16px">
+          <div class="insight-title">Reto para el ITM</div>
+          <p>Las empresas solicitan formación en <b>análisis de datos, IA para productividad y toma de decisiones basada en datos</b>. Postobón manifestó interés concreto en programas de capacitación interna.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Perfil de Competencias Demandado</h3></div>
+      <div class="card-body">
+        <div style="margin-bottom:12px;font-size:.78rem;color:var(--text2);font-weight:600">HABILIDADES TÉCNICAS</div>
+        <div class="tag-cloud" style="margin-bottom:16px">
+          <span class="tag tech">Segunda lengua</span>
+          <span class="tag tech">Ciberseguridad</span>
+          <span class="tag tech">Ciencia de datos</span>
+          <span class="tag tech">Automatización</span>
+        </div>
+        <div style="margin-bottom:12px;font-size:.78rem;color:var(--text2);font-weight:600">POWER SKILLS (Habilidades Blandas)</div>
+        <div class="tag-cloud">
+          <span class="tag comp">💡 Pensamiento Crítico</span>
+          <span class="tag comp">📊 Análisis de Datos</span>
+          <span class="tag comp">📚 Auto-aprendizaje</span>
+          <span class="tag comp">🤝 Trabajo en Equipo</span>
+          <span class="tag comp">🚀 Proactividad</span>
+          <span class="tag comp">💬 Comunicación</span>
+          <span class="tag comp">🎯 Liderazgo</span>
+          <span class="tag comp">🔍 Resolución de Problemas</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ OPORTUNIDADES DE RELACIONAMIENTO ══════════ -->
+  <p class="section-title">Oportunidades de Relacionamiento Identificadas</p>
+  <div class="grid-3">
+    <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:12px;padding:20px;border:1px solid #bfdbfe">
+      <div style="font-size:1.6rem;margin-bottom:8px">🔬</div>
+      <div style="font-weight:700;color:var(--itm);font-size:.85rem;margin-bottom:6px">Investigación & Extensión</div>
+      <div style="font-size:.77rem;color:var(--text2);line-height:1.6">Docentes identificaron oportunidades en lo relacional e investigativo; posibilidad de llevar el portafolio de servicios ITM a las empresas.</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;padding:20px;border:1px solid #bbf7d0">
+      <div style="font-size:1.6rem;margin-bottom:8px">📘</div>
+      <div style="font-weight:700;color:#166534;font-size:.85rem;margin-bottom:6px">Formación Empresarial</div>
+      <div style="font-size:.77rem;color:var(--text2);line-height:1.6">Postobón abrió ventana para formación de empleados en programas ITM. Contacto trasladado a área de extensión y facultad correspondiente.</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#fefce8,#fef9c3);border-radius:12px;padding:20px;border:1px solid #fde68a">
+      <div style="font-size:1.6rem;margin-bottom:8px">🏫</div>
+      <div style="font-weight:700;color:#92400e;font-size:.85rem;margin-bottom:6px">Aulas Descentralizadas</div>
+      <div style="font-size:.77rem;color:var(--text2);line-height:1.6">Oportunidad de realizar ejercicios experienciales dentro de las empresas — llevar el aprendizaje directamente al entorno productivo.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ CONCLUSIONES Y OBSERVACIONES ══════════ -->
+  <p class="section-title">Conclusiones, Observaciones y Sugerencias</p>
+  <div class="obs-grid">
+    <div class="obs-card warn">
+      <h4 style="color:#92400e">⚠️ Observaciones</h4>
+      <ul>
+        <li>Desconocimiento del alcance y propósito del CUEE dentro de la comunidad universitaria.</li>
+        <li>La deserción de estudiantes y docentes se da por temor a no conseguir alternativas de tiempo para actividades académicas.</li>
+        <li>Los resultados de relacionamiento no tienen continuidad por falta de compromiso de áreas responsables.</li>
+        <li>Se identifican talentos que deberían ser estimulados y potencializados en la institución.</li>
+      </ul>
+    </div>
+    <div class="obs-card sugg">
+      <h4 style="color:#166534">✅ Sugerencias</h4>
+      <ul>
+        <li>Promover comunicación permanente y retroalimentación entre mentores, estudiantes y empresas.</li>
+        <li>Fortalecer la estructura del programa de mentoría.</li>
+        <li>Calendarios de planeación y notificación oportuna a las IES.</li>
+        <li>Generar la <b>Escuela de Talento y Formación CUEE</b>.</li>
+        <li>Entregar informe gerencial a las rectorías sobre el evento completo.</li>
+      </ul>
+    </div>
+    <div class="obs-card concl" style="grid-column:1/-1">
+      <h4 style="color:#1e40af">📌 Conclusiones Generales</h4>
+      <ul style="columns:2;gap:24px">
+        <li>El programa logra establecer un ítem en participación, ejecución y resultados de objetivos propuestos.</li>
+        <li>La experiencia permite a los estudiantes conectar teoría académica con la realidad productiva de manera significativa.</li>
+        <li>Los docentes y mentores deben documentar el observatorio de la experiencia para aportar a la academia en tendencias y competencias técnicas.</li>
+        <li>Se requiere un plan de continuidad conjunto con las IES, tanto en lo académico como en lo relacional.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ VOZ DE LOS ESTUDIANTES ══════════ -->
+  <p class="section-title">Voz de los Estudiantes</p>
+  <div class="grid-3">
+    <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;box-shadow:0 1px 8px rgba(16,45,105,.05)">
+      <div style="font-size:1.2rem;color:var(--gold);margin-bottom:8px">❝</div>
+      <p style="font-size:.78rem;color:var(--text2);line-height:1.6;font-style:italic">"Considero que en esta experiencia se evidenció claramente el sector productivo desde un enfoque más cercano y realista, pudimos ser partícipes de cada proceso que se maneja en una empresa."</p>
+      <div style="margin-top:10px;font-size:.7rem;color:var(--itm);font-weight:600">— Estudiante de Ingeniería en Calidad</div>
+    </div>
+    <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;box-shadow:0 1px 8px rgba(16,45,105,.05)">
+      <div style="font-size:1.2rem;color:var(--gold);margin-bottom:8px">❝</div>
+      <p style="font-size:.78rem;color:var(--text2);line-height:1.6;font-style:italic">"Sí, la experiencia fue fundamental. Me permitió validar conceptos teóricos en situaciones reales, enfrentando desafíos técnicos y logísticos que no siempre se ven en el aula."</p>
+      <div style="margin-top:10px;font-size:.7rem;color:var(--itm);font-weight:600">— Estudiante participante</div>
+    </div>
+    <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;box-shadow:0 1px 8px rgba(16,45,105,.05)">
+      <div style="font-size:1.2rem;color:var(--gold);margin-bottom:8px">❝</div>
+      <p style="font-size:.78rem;color:var(--text2);line-height:1.6;font-style:italic">"Quería conocer cómo funciona una empresa líder por dentro, cómo se gestionan los procesos para integrar la práctica con la teoría. Fue algo hermoso ver todo lo estudiado en acción."</p>
+      <div style="margin-top:10px;font-size:.7rem;color:var(--itm);font-weight:600">— Estudiante participante</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══════════ FOOTER ══════════ -->
+<div class="page-footer">
+  <b>Institución Universitaria ITM</b> · Oficina de Prácticas Profesionales · Informe Ejecutivo Pasantías CUEE 2026-1<br>
+  <span style="margin-top:4px;display:block">Información elaborada a partir del documento oficial del Comité Universidad, Empresa y Estado (CUEE) – Semestre 2026-1</span>
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+const C = {
+  itm:'#102D69', itm2:'#2563eb', green:'#10b981', gold:'#f59e0b',
+  orange:'#f97316', red:'#ef4444', purple:'#8b5cf6',
+};
+
+// ── TOTAL GENERAL ──
+(()=>{
+  const ctx = document.getElementById('c-total').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Inscritos','Cupos Asignados','Participantes'],
+      datasets:[{
+        label:'Estudiantes',
+        data:[319,173,132],
+        backgroundColor:[C.itm, C.itm2, C.green],
+        borderRadius:8, borderWidth:0,
+        datalabels:{anchor:'end',align:'top',font:{size:14,weight:'bold'},color:[C.itm,C.itm2,C.green],formatter:v=>v}
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      layout:{padding:{top:30}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>` ${x.parsed.y} estudiantes`}},datalabels:{}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12,weight:'600'}}},
+        y:{display:false,beginAtZero:true}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+})();
+
+// ── FACULTAD COMPARATIVO ──
+(()=>{
+  const facs = ['Ciencias Exactas','Ciencias Económicas','Ingeniería','Artes y Humanidades'];
+  const inscritos = [21,88,57,5];
+  const participantes = [15,76,38,3];
+  const ctx = document.getElementById('c-fac-comp').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: facs,
+      datasets:[
+        {label:'Inscritos', data:inscritos, backgroundColor:'rgba(16,45,105,.25)', borderColor:C.itm, borderWidth:2, borderRadius:4,
+         datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:C.itm,formatter:v=>v}},
+        {label:'Participantes', data:participantes, backgroundColor:C.green+'cc', borderColor:C.green, borderWidth:2, borderRadius:4,
+         datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:C.green,formatter:v=>v}}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      layout:{padding:{top:28}},
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},padding:12,boxWidth:12}},
+        datalabels:{}
+      },
+      scales:{
+        x:{grid:{color:'#eef1f7'},ticks:{font:{size:10}}},
+        y:{grid:{color:'#eef1f7'},beginAtZero:true,ticks:{font:{size:10}}}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+
+  // tabla
+  const tbody = document.getElementById('fac-table');
+  const cols = ['#102D69','#2563eb','#10b981','#f59e0b'];
+  facs.forEach((f,i)=>{
+    const pct = Math.round(participantes[i]/inscritos[i]*100);
+    const tr = document.createElement('tr');
+    tr.style.borderBottom='1px solid #eef1f7';
+    tr.innerHTML=`
+      <td style="padding:7px 10px;font-weight:600;font-size:.78rem;color:var(--text)">${f}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:.78rem">${inscritos[i]}</td>
+      <td style="padding:7px 10px;text-align:center;font-size:.78rem;font-weight:700;color:${cols[i]}">${participantes[i]}</td>
+      <td style="padding:7px 10px;text-align:center">
+        <span style="background:${cols[i]}22;color:${cols[i]};border-radius:8px;padding:2px 9px;font-size:.72rem;font-weight:700">${pct}%</span>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+})();
+
+// ── DOUGHNUT FACULTAD ──
+(()=>{
+  const ctx = document.getElementById('c-fac-doughnut').getContext('2d');
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Ciencias Económicas','Ingeniería','Ciencias Exactas','Artes y Humanidades'],
+      datasets:[{
+        data:[76,38,15,3],
+        backgroundColor:[C.itm2,C.green,C.gold,C.purple],
+        borderWidth:2, borderColor:'#fff',
+        datalabels:{formatter:(v,ctx)=>{const t=132;return Math.round(v/t*100)+'%';},color:'#fff',font:{size:11,weight:'bold'}}
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout:'58%',
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},padding:10,boxWidth:11}},
+        datalabels:{}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+})();
+
+// ── EMPRESAS ──
+(()=>{
+  const ctx = document.getElementById('c-empresas').getContext('2d');
+  const labels = ['Línea Directa','Metro Medellín','Postobón','CEIBA Software','Noel','Protección','Colcafé','Prebel'];
+  const vals   = [27,23,20,16,15,14,9,8];
+  const bgColors = vals.map((v,i)=>{
+    const palette=[C.gold,C.itm2,C.red,'#102D69',C.orange,C.green,'#6d4c41',C.purple];
+    return palette[i];
+  });
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'Asistentes',
+        data:vals,
+        backgroundColor:bgColors,
+        borderRadius:6, borderWidth:0,
+        datalabels:{anchor:'end',align:'top',font:{size:11,weight:'bold'},color:bgColors,formatter:v=>v}
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      layout:{padding:{right:40}},
+      plugins:{legend:{display:false},datalabels:{}},
+      scales:{
+        x:{display:false,beginAtZero:true},
+        y:{grid:{display:false},ticks:{font:{size:11,weight:'600'}}}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+})();
+</script>
+</body>
+</html>
