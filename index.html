@@ -586,6 +586,15 @@ footer b { color:rgba(255,255,255,.8) }
   .ch.h260, .ch.h250, .ch.h240 { height:190px }
 }
 
+/* ── ETIQUETAS GRÁFICAS HISTÓRICOS ───────────── */
+.hist-chart-label {
+  font-size:.72rem; font-weight:700; color:var(--itm-blue);
+  text-transform:uppercase; letter-spacing:.05em;
+  margin-bottom:8px; padding:4px 10px;
+  background:#eef2ff; border-left:3px solid var(--itm-blue);
+  border-radius:0 6px 6px 0; display:inline-block;
+}
+
 /* ── PRINT / PDF ─────────────────────────────── */
 @media print {
   header, .filter-bar, .btn-pdf, nav { display:none !important }
@@ -1585,9 +1594,11 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body">
         <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
+            <div class="hist-chart-label">📅 Total por Año</div>
             <div class="ch h260"><canvas id="c-hist-pre-anio"></canvas></div>
           </div>
           <div>
+            <div class="hist-chart-label">📈 Evolución por Trimestre</div>
             <div class="ch h260"><canvas id="c-hist-pre-trim"></canvas></div>
           </div>
         </div>
@@ -1601,9 +1612,11 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body">
         <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
+            <div class="hist-chart-label">📅 Total por Año</div>
             <div class="ch h260"><canvas id="c-hist-inic-anio"></canvas></div>
           </div>
           <div>
+            <div class="hist-chart-label">📈 Evolución por Trimestre</div>
             <div class="ch h260"><canvas id="c-hist-inic-trim"></canvas></div>
           </div>
         </div>
@@ -1617,9 +1630,11 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body">
         <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
+            <div class="hist-chart-label">📅 Total por Año</div>
             <div class="ch h260"><canvas id="c-hist-grad-anio"></canvas></div>
           </div>
           <div>
+            <div class="hist-chart-label">📈 Evolución por Trimestre</div>
             <div class="ch h260"><canvas id="c-hist-grad-trim"></canvas></div>
           </div>
         </div>
@@ -1633,9 +1648,11 @@ footer b { color:rgba(255,255,255,.8) }
       <div class="card-body">
         <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
+            <div class="hist-chart-label">📅 Total por Año</div>
             <div class="ch h240"><canvas id="c-hist-vinc-anio"></canvas></div>
           </div>
           <div>
+            <div class="hist-chart-label">📈 Evolución por Trimestre</div>
             <div class="ch h240"><canvas id="c-hist-vinc-trim"></canvas></div>
           </div>
         </div>
@@ -1647,6 +1664,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Comparativo Integral por Año</h3><span class="card-badge">Preprácticas · Iniciaron · Graduados · Vinculados</span></div>
       <div class="card-body">
+        <div class="hist-chart-label">📊 Comparativo 2024 · 2025 · 2026* por indicador</div>
         <div class="ch h300"><canvas id="c-hist-comp"></canvas></div>
         <div id="hist-analisis-comp" style="margin-top:16px;padding:14px 18px;background:#f0f4ff;border-left:4px solid var(--itm-blue);border-radius:0 8px 8px 0;font-size:.82rem;color:#334;line-height:1.7"></div>
       </div>
