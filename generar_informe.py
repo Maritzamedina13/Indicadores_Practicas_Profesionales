@@ -203,7 +203,7 @@ def load_encuesta():
 def load_aprobacion():
     df = pd.read_excel('aprobación de funciones.xlsx', sheet_name=0, engine='openpyxl')
     df.columns = [c.strip() for c in df.columns]
-    df = df.iloc[1:].reset_index(drop=True)
+    df = df.reset_index(drop=True)
     cols = list(df.columns)
     rename = {cols[0]:'PROGRAMA', cols[1]:'FUNCIONES', cols[2]:'EMPRESA',
               cols[3]:'NIT_RAW', cols[4]:'ESTADO_APROBACION',
