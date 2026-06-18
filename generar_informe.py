@@ -4048,6 +4048,7 @@ function renderHistoricos() {
     const ctx = document.getElementById(id);
     if (!ctx) return;
     new Chart(ctx, { type:'bar', data:{ labels, datasets },
+      plugins:[ChartDataLabels],
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ ...defPlugin, title:{display:!!title,text:title,font:{size:12}} },
         scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
@@ -4058,8 +4059,11 @@ function renderHistoricos() {
     const ctx = document.getElementById(id);
     if (!ctx) return;
     new Chart(ctx, { type:'line', data:{ labels, datasets },
+      plugins:[ChartDataLabels],
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ ...defPlugin },
+        plugins:{ ...defPlugin,
+          datalabels:{anchor:'center',align:'top',offset:6,font:{size:10,weight:'700'},color:'#334',
+            formatter:v=>v==null?'':v} },
         scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
                  y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } } });
   };
@@ -4145,6 +4149,7 @@ function renderHistoricos() {
   if (ctxComp) {
     new Chart(ctxComp, {
       type:'bar',
+      plugins:[ChartDataLabels],
       data:{ labels: anios,
         datasets:[
           { label:'Asistentes preprácticas', data:preAnio,  backgroundColor:'rgba(16,45,105,.8)',   borderRadius:5 },
