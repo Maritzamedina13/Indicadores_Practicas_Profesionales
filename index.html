@@ -544,14 +544,46 @@ footer b { color:rgba(255,255,255,.8) }
 .cuee-thumb:hover { opacity:.85 }
 .cuee-thumb.active { border-color:var(--itm,#102D69); opacity:1 }
 .cuee-thumb img { width:100%; height:100%; object-fit:cover; display:block }
+/* ── RESPONSIVE CUEE + HISTÓRICOS ───────────────────────── */
+/* Tablet ≤1024px */
+@media(max-width:1024px){
+  .rg-3col { grid-template-columns:1fr 1fr !important }
+  .rg-4col { grid-template-columns:1fr 1fr !important }
+  #cuee-ratings { grid-template-columns:1fr 1fr !important }
+  #hist-kpis    { grid-template-columns:1fr 1fr !important }
+  .rg-fac { grid-template-columns:1fr 1fr !important }
+  .rg-hist-1-2 { grid-template-columns:1fr !important }
+}
+/* Mobile ≤768px */
 @media(max-width:768px){
   .cuee-carousel { aspect-ratio:16/9; max-height:280px }
   .cuee-thumb { width:60px; height:40px }
   .cuee-btn { width:34px; height:34px; font-size:1.4rem }
+  /* hero CUEE: wrap en una sola columna */
+  #hero-cuee { flex-direction:column; gap:8px }
+  #hero-cuee > div { min-width:unset !important; width:100% }
+  /* grids CUEE */
+  .rg-2col { grid-template-columns:1fr !important }
+  .rg-3col { grid-template-columns:1fr !important }
+  .rg-fac  { grid-template-columns:1fr !important }
+  #cuee-ratings { grid-template-columns:1fr 1fr !important }
+  /* grids Históricos */
+  .rg-hist-1-2 { grid-template-columns:1fr !important }
+  #hist-kpis   { grid-template-columns:1fr 1fr !important }
+  /* ajuste alturas en mobile */
+  .ch.h260, .ch.h250, .ch.h240 { height:220px }
+  /* Tendencias: columna izquierda sin borde derecho */
+  .rg-2col [style*="border-right:1px solid var(--border)"] { border-right:none !important; border-bottom:1px solid var(--border) }
 }
+/* Small mobile ≤480px */
 @media(max-width:480px){
   .cuee-caption-title { font-size:.78rem }
   .cuee-caption-desc  { display:none }
+  #cuee-ratings { grid-template-columns:1fr !important }
+  #hist-kpis    { grid-template-columns:1fr 1fr !important }
+  .rg-3col  { grid-template-columns:1fr !important }
+  .rg-hist-1-2 { grid-template-columns:1fr !important }
+  .ch.h260, .ch.h250, .ch.h240 { height:190px }
 }
 
 /* ── PRINT / PDF ─────────────────────────────── */
@@ -1304,7 +1336,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Participación General 2026-1</h3><span class="card-badge">Tasa de conversión · Cifras clave</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center">
+        <div class="rg-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center">
 
           <!-- Barras horizontales de conversión -->
           <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
@@ -1375,7 +1407,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Distribución por Facultad</h3><span class="card-badge">Inscritos · Participantes · Conversión</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:2fr 180px 1fr;gap:20px;align-items:center">
+        <div class="rg-fac" style="display:grid;grid-template-columns:2fr 180px 1fr;gap:20px;align-items:center">
           <!-- Barras comparativo -->
           <div class="ch h250"><canvas id="c-cuee-fac-comp"></canvas></div>
           <!-- Doughnut -->
@@ -1418,7 +1450,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Tendencias y Competencias del Sector Productivo</h3><span class="card-badge">Identificadas en Pasantías CUEE 2026-1</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <div class="rg-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
 
           <!-- Columna izquierda: Tendencias -->
           <div style="padding:20px;background:#f8fafd;border-right:1px solid var(--border)">
@@ -1454,7 +1486,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Oportunidades de Relacionamiento Identificadas</h3></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div class="rg-3col" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
           <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;padding:18px;border:1px solid #bfdbfe">
             <div style="font-size:1.4rem;margin-bottom:8px">🔬</div>
             <div style="font-weight:700;color:var(--itm);font-size:.84rem;margin-bottom:5px">Investigación & Extensión</div>
@@ -1478,7 +1510,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Conclusiones, Observaciones y Sugerencias</h3></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="rg-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div style="background:#fefce8;border-radius:10px;border:1px solid #fde68a;padding:15px 17px">
             <div style="font-size:.71rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚠️ Observaciones</div>
             <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
@@ -1500,7 +1532,7 @@ footer b { color:rgba(255,255,255,.8) }
           </div>
           <div style="background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;padding:15px 17px;grid-column:1/-1">
             <div style="font-size:.71rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📌 Conclusiones Generales</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            <div class="rg-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
               <ul style="padding-left:15px;font-size:.76rem;color:var(--text2);line-height:1.7">
                 <li>Se logró establecer participación, ejecución y resultados en los objetivos propuestos.</li>
                 <li>Los estudiantes conectaron teoría académica con la realidad productiva de manera significativa.</li>
@@ -1519,7 +1551,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Voz de los Estudiantes</h3><span class="card-badge">Testimonios del programa</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="cuee-quotes"></div>
+        <div class="rg-3col" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="cuee-quotes"></div>
       </div>
     </div>
 
@@ -1551,7 +1583,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Asistentes Curso Preprácticas</h3><span class="card-badge">Evolución anual y por trimestre</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+        <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
             <div class="ch h260"><canvas id="c-hist-pre-anio"></canvas></div>
           </div>
@@ -1567,7 +1599,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Estudiantes que Iniciaron Prácticas</h3><span class="card-badge">Registros por período</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+        <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
             <div class="ch h260"><canvas id="c-hist-inic-anio"></canvas></div>
           </div>
@@ -1583,7 +1615,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Graduados con Práctica</h3><span class="card-badge">Evolución anual y por trimestre</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+        <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
             <div class="ch h260"><canvas id="c-hist-grad-anio"></canvas></div>
           </div>
@@ -1599,7 +1631,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Estudiantes Vinculados (Empresa)</h3><span class="card-badge">Contratos · Vinculaciones activas</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
+        <div class="rg-hist-1-2" style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:center">
           <div>
             <div class="ch h240"><canvas id="c-hist-vinc-anio"></canvas></div>
           </div>
