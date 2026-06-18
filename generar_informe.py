@@ -1158,46 +1158,72 @@ footer b { color:rgba(255,255,255,.8) }
 .cuee-thumb:hover { opacity:.85 }
 .cuee-thumb.active { border-color:var(--itm,#102D69); opacity:1 }
 .cuee-thumb img { width:100%; height:100%; object-fit:cover; display:block }
-/* ── RESPONSIVE CUEE + HISTÓRICOS ───────────────────────── */
+/* ── RESPONSIVE GLOBAL ───────────────────────────────────── */
+/* chart-scroll-wide: gráficas anchas con scroll horizontal controlado */
+.chart-scroll-wide { min-width:100% }
+@media(max-width:768px){ .chart-scroll-wide { min-width:480px !important } }
+@media(max-width:480px){ .chart-scroll-wide { min-width:360px !important } }
+
 /* Tablet ≤1024px */
 @media(max-width:1024px){
-  .rg-3col { grid-template-columns:1fr 1fr !important }
-  .rg-4col { grid-template-columns:1fr 1fr !important }
-  #cuee-ratings { grid-template-columns:1fr 1fr !important }
-  #hist-kpis    { grid-template-columns:1fr 1fr !important }
+  /* grids de 4 cols → 2 */
+  .rg-4col, #cuee-ratings, #hist-kpis { grid-template-columns:1fr 1fr !important }
+  /* grids de 3 cols → 2 */
+  .rg-3col, .rg-tags-3 { grid-template-columns:1fr 1fr !important }
+  /* facultad CUEE */
   .rg-fac { grid-template-columns:1fr 1fr !important }
+  /* históricos 1fr 2fr → apilado */
   .rg-hist-1-2 { grid-template-columns:1fr !important }
 }
+
 /* Mobile ≤768px */
 @media(max-width:768px){
+  /* carrusel */
   .cuee-carousel { aspect-ratio:16/9; max-height:280px }
   .cuee-thumb { width:60px; height:40px }
   .cuee-btn { width:34px; height:34px; font-size:1.4rem }
-  /* hero CUEE: wrap en una sola columna */
+  /* hero CUEE */
   #hero-cuee { flex-direction:column; gap:8px }
   #hero-cuee > div { min-width:unset !important; width:100% }
-  /* grids CUEE */
-  .rg-2col { grid-template-columns:1fr !important }
-  .rg-3col { grid-template-columns:1fr !important }
-  .rg-fac  { grid-template-columns:1fr !important }
-  #cuee-ratings { grid-template-columns:1fr 1fr !important }
-  /* grids Históricos */
+  /* grids 2 cols → 1 */
+  .rg-2col, .rg-fac { grid-template-columns:1fr !important }
+  /* grids 3 cols → 1 */
+  .rg-3col, .rg-tags-3 { grid-template-columns:1fr !important }
+  /* ratings CUEE 4→2 */
+  .rg-4col, #cuee-ratings { grid-template-columns:1fr 1fr !important }
+  /* tags 2 cols → 1 */
+  .rg-tags-2 { grid-template-columns:1fr !important }
+  /* históricos */
   .rg-hist-1-2 { grid-template-columns:1fr !important }
   #hist-kpis   { grid-template-columns:1fr 1fr !important }
-  /* ajuste alturas en mobile */
-  .ch.h260, .ch.h250, .ch.h240 { height:220px }
-  /* Tendencias: columna izquierda sin borde derecho */
+  /* alturas gráficas */
+  .ch.h360 { height:280px }
+  .ch.h300 { height:240px }
+  .ch.h260, .ch.h250, .ch.h240 { height:200px }
+  /* borde Tendencias */
   .rg-2col [style*="border-right:1px solid var(--border)"] { border-right:none !important; border-bottom:1px solid var(--border) }
+  /* tablas con scroll */
+  .tbl-scroll table { min-width:500px }
 }
+
 /* Small mobile ≤480px */
 @media(max-width:480px){
   .cuee-caption-title { font-size:.78rem }
   .cuee-caption-desc  { display:none }
-  #cuee-ratings { grid-template-columns:1fr !important }
-  #hist-kpis    { grid-template-columns:1fr 1fr !important }
-  .rg-3col  { grid-template-columns:1fr !important }
+  /* todos los grids → 1 col */
+  .rg-4col, #cuee-ratings { grid-template-columns:1fr 1fr !important }
+  #hist-kpis { grid-template-columns:1fr 1fr !important }
+  .rg-3col, .rg-tags-3 { grid-template-columns:1fr !important }
+  .rg-tags-2 { grid-template-columns:1fr !important }
   .rg-hist-1-2 { grid-template-columns:1fr !important }
-  .ch.h260, .ch.h250, .ch.h240 { height:190px }
+  /* alturas gráficas reducidas */
+  .ch.h360 { height:240px }
+  .ch.h300 { height:200px }
+  .ch.h260, .ch.h250, .ch.h240 { height:180px }
+  /* hero stats */
+  .hero-stat-val { font-size:1.1rem }
+  /* KPIs */
+  .kpi-num { font-size:1.4rem }
 }
 
 /* ── ETIQUETAS GRÁFICAS HISTÓRICOS ───────────── */
@@ -1372,7 +1398,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Estudiantes por Monitor (Asesor de Prácticas)</h3></div>
       <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
-        <div class="ch h360" id="wrap-p-asesor" style="min-width:700px">
+        <div class="ch h360 chart-scroll-wide" id="wrap-p-asesor" style="min-width:600px">
           <canvas id="c-p-asesor"></canvas>
         </div>
       </div>
@@ -1779,7 +1805,7 @@ footer b { color:rgba(255,255,255,.8) }
         <span class="card-badge">Escala 1 – 3 · Verde ≥ 2.7 · Teal ≥ 2.3 · Dorado ≥ 1.8</span>
       </div>
       <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
-        <div class="ch h360" id="wrap-est-prog-score" style="min-width:700px">
+        <div class="ch h360 chart-scroll-wide" id="wrap-est-prog-score" style="min-width:600px">
           <canvas id="c-est-prog-score"></canvas>
         </div>
       </div>
@@ -1789,7 +1815,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Programas con mayor participación</h3></div>
       <div class="card-body" style="overflow-x:auto;padding-bottom:10px">
-        <div class="ch h300" id="wrap-est-prog" style="min-width:700px">
+        <div class="ch h300 chart-scroll-wide" id="wrap-est-prog" style="min-width:600px">
           <canvas id="c-est-prog"></canvas>
         </div>
       </div>
@@ -1897,7 +1923,7 @@ footer b { color:rgba(255,255,255,.8) }
           <!-- Barras generales -->
           <div>
             <div class="ch h260"><canvas id="c-cuee-total"></canvas></div>
-            <div style="display:flex;justify-content:center;gap:18px;margin-top:10px;font-size:.72rem;color:var(--text2)">
+            <div style="display:flex;justify-content:center;gap:12px 18px;margin-top:10px;font-size:.72rem;color:var(--text2);flex-wrap:wrap">
               <span>📉 Inscrito→Cupo: <b style="color:#ef4444">45.8%</b> no avanzó</span>
               <span>📉 Cupo→Asistencia: <b style="color:#f97316">23.7%</b> no asistió</span>
             </div>
@@ -1942,7 +1968,7 @@ footer b { color:rgba(255,255,255,.8) }
     <div class="card full">
       <div class="card-head"><h3>Evaluación de los Empresarios</h3><span class="card-badge">Escala 1–5 · Puntaje máximo en todos los criterios</span></div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="cuee-ratings"></div>
+        <div class="rg-4col" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="cuee-ratings"></div>
         <div style="margin-top:14px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;border-left:4px solid #10b981;padding:12px 16px">
           <div style="font-size:.68rem;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Evaluación Global · 5.0 / 5.0</div>
           <p style="font-size:.76rem;color:var(--text2);line-height:1.5">Los empresarios calificaron con <b>puntaje máximo en los cuatro criterios</b>. Refleja una percepción excelente del desempeño, actitud y disposición de los estudiantes ITM.</p>
@@ -1962,7 +1988,7 @@ footer b { color:rgba(255,255,255,.8) }
               <span style="background:#2563eb;color:#fff;border-radius:6px;padding:3px 8px;font-size:.65rem">💡 Tecnológicas</span>
               Tendencias identificadas
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="cuee-tags-tech"></div>
+            <div class="rg-tags-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="cuee-tags-tech"></div>
             <div style="margin-top:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;border-left:4px solid #2563eb;padding:12px 14px">
               <div style="font-size:.67rem;font-weight:700;color:#1d4ed8;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Reto para el ITM</div>
               <p style="font-size:.75rem;color:var(--text2);line-height:1.5;margin:0">Las empresas solicitan formación en <b>IA, análisis de datos y automatización</b>. Postobón manifestó interés en programas de capacitación interna.</p>
@@ -1976,10 +2002,10 @@ footer b { color:rgba(255,255,255,.8) }
               Competencias demandadas
             </div>
             <div style="font-size:.68rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:2px">Habilidades Técnicas</div>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:16px" id="cuee-tags-tec"></div>
+            <div class="rg-tags-2" style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:16px" id="cuee-tags-tec"></div>
             <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
             <div style="font-size:.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-left:2px">Power Skills</div>
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px" id="cuee-tags-soft"></div>
+            <div class="rg-tags-2" style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px" id="cuee-tags-soft"></div>
           </div>
 
         </div>
@@ -4027,23 +4053,23 @@ function renderHistoricos() {
     {label:'2026*',data:[null,null,null,null,null,null,null,236,241], color:'#10b981'},
   ];
   // Aplanado para gráfica combinada por trimestre
-  const preTrimFlat  = [null,237,281,284,325,217,326,200,363,236,241];
+  const preTrimFlat  = [237,281,284,325,217,326,200,363,236,241];
   const trimLabels2  = ['ene-24','abr-24','jul-24','oct-24','ene-25','abr-25','jul-25','oct-25','ene-26','abr-26'];
 
-  // Iniciaron prácticas por trimestre
+  // Iniciaron prácticas por trimestre (datos desde jul-2024)
   const inicTrimFlat = [null,null,548,221,287,178,229,144,257,148];
 
-  // Graduados por trimestre
+  // Graduados por trimestre (datos desde abr-2024)
   const gradTrimFlat = [null,157,274,268,253,249,247,240,169,171];
 
-  // Vinculados por trimestre
+  // Vinculados por trimestre (datos desde abr-2024)
   const vincTrimFlat = [null,33,54,54,62,58,57,72,48,48];
 
   // ── Colores ITM ──
   const C = { blue:'#102D69', lblue:'#3b82f6', green:'#10b981', amber:'#f59e0b', purple:'#8b5cf6', red:'#ef4444' };
 
   const defPlugin = { legend:{position:'bottom',labels:{font:{size:11},padding:10}},
-    datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#334',
+    datalabels:{anchor:'end',align:'top',offset:2,font:{size:11,weight:'700'},color:'#334',
       formatter:v=>v==null?'':v} };
 
   // ── KPIs ──
@@ -4068,6 +4094,7 @@ function renderHistoricos() {
     new Chart(ctx, { type:'bar', data:{ labels, datasets },
       plugins:[ChartDataLabels],
       options:{ responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ top:24 } },
         plugins:{ ...defPlugin, title:{display:!!title,text:title,font:{size:12}} },
         scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
                  y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } } });
@@ -4079,8 +4106,10 @@ function renderHistoricos() {
     new Chart(ctx, { type:'line', data:{ labels, datasets },
       plugins:[ChartDataLabels],
       options:{ responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ top:18 } },
         plugins:{ ...defPlugin,
-          datalabels:{anchor:'center',align:'top',offset:6,font:{size:10,weight:'700'},color:'#334',
+          datalabels:{anchor:'end',align:'top',offset:3,font:{size:10,weight:'700'},color:'#1e3a8a',
+            backgroundColor:'rgba(255,255,255,.85)',borderRadius:4,padding:{top:2,bottom:2,left:4,right:4},
             formatter:v=>v==null?'':v} },
         scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
                  y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } } });
@@ -4177,8 +4206,9 @@ function renderHistoricos() {
         ]
       },
       options:{ responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ top:24 } },
         plugins:{ legend:{position:'bottom',labels:{font:{size:11},padding:12}},
-          datalabels:{anchor:'end',align:'top',font:{size:10,weight:'700'},color:'#334',formatter:v=>v} },
+          datalabels:{anchor:'end',align:'top',offset:2,font:{size:10,weight:'700'},color:'#334',formatter:v=>v} },
         scales:{ x:{grid:{display:false},ticks:{font:{size:11}}},
                  y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}} } }
     });
